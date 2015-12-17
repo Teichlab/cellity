@@ -1,0 +1,262 @@
+---
+title: "Introduction to `cellity`: "
+author: "Davis McCarthy & Tomislav Ilicic"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{An introduction to the cellity package}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+Here is the code for the case studies and supplemental material for the paper.
+
+```{r, eval=FALSE}
+
+################################################################################
+###############################TRAINING DATA RAW COUNTS####################################
+################################################################################
+
+output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
+GO_terms_input="/Users/ti1/Google\ Drive/projects/quality_control/tables/biological_features.txt"
+extra_genes_input="/Users/ti1/Google\ Drive/projects/quality_control/tables/extra_genes.txt"
+common_features_input="/Users/ti1/Google Drive/projects/quality_control/tables/common_features.txt"
+
+
+#LOAD ALL DATA
+GO_terms<-read.table(GO_terms_input, header=FALSE, stringsAsFactors=FALSE)
+extra_genes=read.table(extra_genes_input, header=FALSE, stringsAsFactors=FALSE, fill=TRUE)
+common_features=unlist(read.table(common_features_input, header=FALSE, stringsAsFactors=FALSE, sep=","))
+extra_genes=apply(extra_genes, 1, function(x){
+    return(subset(x, x != ""))
+})
+
+
+input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.sorted.txt"
+data<-read.table(input, header=TRUE)
+genes=data[, 1]
+data=data[,-1]
+rownames(data)=genes
+data=data[,order(colnames(data))]
+
+input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.stats"
+read_metrics=read.table(input, sep=",", header=TRUE)
+read_metrics=read_metrics[which(read_metrics[,1] %in% colnames(data)),]
+read_metrics=read_metrics[order((read_metrics[,1])),]
+
+file_name<-get_file_name_no_ext(input)
+
+qual_i<-grep("_", rownames(data))
+qual_s<-as.character(rownames(data)[qual_i])
+data_qual<-data[qual_i,]
+data[qual_i,]=data[qual_i,]
+
+ercc_i<-grep("ERCC", rownames(data))
+ercc_s<-as.character(rownames(data)[ercc_i])
+counts_ercc<-data[ercc_i,]
+ercc=colSums(counts_ercc)
+ht_seq_features= t(data_qual[c(1, 2),])
+
+read_metrics = cbind(read_metrics, ht_seq_features, ercc)
+counts<-data[-c(ercc_i,qual_i),]
+genes=rownames(counts)
+
+counts_nm<-data.frame(normalise_by_factor(counts, colSums(counts)))
+rownames(counts_nm)=genes
+output_dir="/Users/ti1/Google Drive/projects/quality_control/data/23_11_15"
+file_name=paste0(file_name, "_raw_counts")
+
+features=extract_features(counts_nm, read_metrics, file_name, output_dir , common_features, GO_terms, extra_genes, "mouse")
+
+quality_PCA = asses_cell_quality_PCA(features[[1]], paste0(output_dir, "/", file_name), paste0(file_name, "_all_features"))
+quality_PCA = asses_cell_quality_PCA(features[[2]], paste0(output_dir, "/", file_name), paste0(file_name, "_common_features"))
+
+################################################################################
+#####################TRAINING DATA CUFFLINKS SUPPLEMENT#########################
+################################################################################
+
+# MERGE ALL FPKM COUNTS AND TRANSFORM THEM TO TPM
+# fpkmToTpm <- function(fpkm)
+# {
+#   exp(log(fpkm) - log(sum(fpkm)) + log(1e6))
+# }
+# 
+# 
+# genes_expr<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/", pattern = ".*_cufflinks-2_2_1_Linux_x86_64.counts$", all.files = FALSE,
+#                        full.names = TRUE, recursive = TRUE)
+# 
+# data_complete=sapply(genes_expr, function(x) {
+#   
+#   data<-read.table(x, header=FALSE, stringsAsFactors = F)
+#   return(data[, -1])
+# }, simplify=FALSE)
+# 
+# genes<-read.table(genes_expr[1], header=TRUE)[,1]
+# data=do.call(cbind, data_complete)
+# names=data[1, ]
+# data=data[-1, ]
+# data <- apply(data,2, as.numeric)
+# colnames(data)=names
+# 
+# genes_dup=which(duplicated(genes)==TRUE)
+# isoforms=unique(genes[genes_dup])
+# 
+# genes_dup=sapply(isoforms, function(x) {
+#   
+#   i=which(genes==x)
+#   return(i)  
+# }, simplify=FALSE)
+# genes_dup=unlist(genes_dup)
+# 
+# sums=sapply(isoforms, function(x) {
+#   
+#   i=which(genes==x)
+#   return(colSums(data[i, ]))
+#   
+# }, simplify=FALSE)
+# 
+# duplicates_sums=do.call(rbind, sums)
+# rownames(duplicates_sums)=isoforms
+# 
+# data=data[-genes_dup, ]
+# genes=genes[-genes_dup]
+# rownames(data)=genes
+# 
+# which(rownames(data) %in% rownames(duplicates_sums))
+# data_com=rbind(data, duplicates_sums)
+# genes=rownames(data_com)
+# data_com=fpkmToTpm(data_com) 
+# data_com=data_com[,order(colnames(data_com))]
+
+#write.table(data_com, "/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts")
+data=read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts", header=TRUE)
+labels_original=read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/labels_and_names_detailed_ola_mES.txt", header=TRUE)
+
+#data=data[,which(colnames(data) %in% labels_original[,1])]
+
+input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.stats"
+read_metrics=read.table(input, sep=",", header=TRUE)
+read_metrics=read_metrics[which(read_metrics[,1] %in% colnames(data)),]
+read_metrics=read_metrics[order((read_metrics[,1])),]
+
+file_name<-get_file_name_no_ext("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts")
+counts_nm=data
+features=extract_features(counts_nm, read_metrics, paste0(file_name, "_cufflinks"), "/Users/ti1/Google Drive/projects/quality_control/data/23_11_15", common_features, GO_terms, extra_genes, "mouse")
+
+################################################################################
+###############################HUMAN SUPPLEMENT DATA############################
+################################################################################
+genes_expr<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/", pattern = ".*\\.counts.txt$", all.files = FALSE,
+                       full.names = TRUE, recursive = TRUE)
+stats<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/", pattern = ".*\\.stats$", all.files = FALSE,
+                  full.names = TRUE, recursive = TRUE)
+extra_genes_human_input="/Users/ti1/Google Drive/projects/quality_control/tables/extra_genes_humans.txt"
+output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
+
+
+features_data_sets=sapply(1:length(genes_expr), function(x){
+    
+    data<-read.table(genes_expr[[x]], header=TRUE)
+    data=data[,order(colnames(data))]
+    
+    read_metrics=read.table(stats[[x]], sep=",", header=TRUE)
+    read_metrics=read_metrics[order((read_metrics[,1])),]
+    
+    file_name<-get_file_name_no_ext(genes_expr[[x]])
+    
+    qual_i<-grep("_", rownames(data))
+    qual_s<-as.character(rownames(data)[qual_i])
+    data_qual<-data[qual_i,]
+    data[qual_i,]=data[qual_i,]
+    
+    ercc_i<-grep("ERCC", rownames(data))
+    ercc_s<-as.character(rownames(data)[ercc_i])
+    counts_ercc<-data[ercc_i,]
+    ercc=colSums(counts_ercc)
+    ht_seq_features= t(data_qual[c(1, 2),])
+    
+    read_metrics = cbind(read_metrics, ht_seq_features, ercc)
+    counts<-data[-c(ercc_i,qual_i),]
+    genes=rownames(counts)
+    counts_nm<-data.frame(normalise_by_factor(counts, colSums(counts)))
+    
+    #LOAD ALL DATA
+    GO_terms<-read.table(GO_terms_input, header=FALSE, stringsAsFactors=FALSE)
+    extra_genes_human=read.table(extra_genes_human_input, header=FALSE, stringsAsFactors=FALSE, fill=TRUE)
+    common_features=unlist(read.table(common_features_input, header=FALSE, stringsAsFactors=FALSE, sep=","))
+    extra_genes_human=apply(extra_genes_human, 1, function(x){
+        return(subset(x, x != ""))
+    })
+    
+    
+    features=extract_features(counts_nm, read_metrics, file_name, output_dir, common_features, GO_terms, extra_genes_human, "human")
+    all=features[[1]]
+    common=features[[2]]
+    return(features)
+}, simplify=FALSE)
+
+
+#CHECK IF SVM PREDICTS HUMAN CELLS
+training_set_common_features=read.table("/Users/ti1/Google Drive/projects/quality_control/data/23_11_15/ola_mES_raw_counts/ola_mES_raw_counts.common.features", header=TRUE)
+training_set_all_features=read.table("/Users/ti1/Google Drive/projects/quality_control/data/23_11_15/ola_mES_raw_counts/ola_mES_raw_counts.all.features", header=TRUE)
+training_set_labels=read.table("/Users/ti1/Google Drive/projects/quality_control/data/30_12/ola_mES/pre_clustering/ola_mES_no_corr_features/labels_and_names_detailed_ola_mES_pca.txt", header=TRUE)
+paramaters_core<-read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/20_11/ola_mES/model_ensemble_param_generic_pca_no_corr_features/ola_mES_generic.ensemble_parameters_boost.txt")
+
+
+training_set_labels=training_set_labels[order(training_set_labels[,1]),]
+quake_common=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/quake_smart_13_HTSeq-0_6_1/quake_smart_13_HTSeq-0_6_1.common.features", header=TRUE)
+quake_all=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/quake_smart_13_HTSeq-0_6_1/quake_smart_13_HTSeq-0_6_1.all.features", header=TRUE)
+
+
+ramskold_common=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/ramskold_2012_cancer_HTSeq-0_6_1/ramskold_2012_cancer_HTSeq-0_6_1.common.features", header=TRUE)
+ramskold_all=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/ramskold_2012_cancer_HTSeq-0_6_1/ramskold_2012_cancer_HTSeq-0_6_1.all.features", header=TRUE)
+output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
+
+
+quality_PCA_rams = asses_cell_quality_PCA(ramskold_all, paste0(output_dir, "/","ramskold_2012_cancer_HTSeq-0_6_1"), paste0("ramskold_2012_cancer_HTSeq-0_6_1", "_all"))
+quality_PCA_quake = asses_cell_quality_PCA(quake_all, paste0(output_dir, "/","quake_smart_13_HTSeq-0_6_1"), paste0("quake_smart_13_HTSeq-0_6_1", "_all"))
+
+
+combined=rbind(quake_common, ramskold_common, training_set_common_features)
+
+pca<-prcomp(combined, scale=TRUE, center=TRUE)
+pca_var_explained=summary(pca)
+
+data_frame<-data.frame(type=c(rep("human1", nrow(quake_common)), rep("human2", nrow(ramskold_common)), training_set_labels[,2]), pca$x)  
+col=c("0" = "red","1" = "darkgreen")
+
+plot<-ggplot(data_frame, aes(x=PC1, y=PC2), size=1) + geom_point(aes(colour=type)) + theme_bw()  + theme(axis.line=element_blank(),
+                                                                                                         axis.text.x=element_text(),axis.text.y=element_text(),
+                                                                                                         axis.ticks.length = unit(0, "mm"),
+                                                                                                         axis.title.x=element_blank(),
+                                                                                                         axis.title.y=element_blank(),
+                                                                                                         legend.position="none",
+                                                                                                         panel.background=element_blank(),
+                                                                                                         panel.border= element_rect(fill=NA,color="black", 
+                                                                                                                                    linetype="solid"),
+                                                                                                         panel.grid.major=element_blank(),
+                                                                                                         panel.grid.minor=element_blank(),
+                                                                                                         plot.background=element_blank()) 
+
+ggsave(paste0(output_dir, "/human_and_mouse_cancer_cells.pdf"), plot, width = 80, height = 90, units="mm")
+
+#PREDICT FROM MOUSE TO QUAKE CELLS
+quality_SVM=asses_cell_quality_SVM(training_set_common_features[, -c(4,5)], training_set_labels[,2], quake_common[, -c(4,5)], paramaters_core)
+length(which((quality_PCA_quake[,2]==quality_SVM[,2])==TRUE))/96
+
+#PREDICT FROM MOUSE TO RAMSKOLD CELLS
+quality_SVM=asses_cell_quality_SVM(training_set_common_features[, -c(4,5)], training_set_labels[,2], ramskold_common[, -c(4,5)], paramaters_core)
+length(which((quality_PCA_rams[,2]==quality_SVM[,2])==TRUE))/18
+
+```
+
+

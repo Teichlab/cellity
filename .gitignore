@@ -1,0 +1,54 @@
+#### joe made this: http://goel.io/joe
+
+#####=== R ===#####
+
+# History files
+.Rhistory
+.Rapp.history
+
+# Example code in package build process
+*-Ex.R
+
+# RStudio files
+.Rproj.user/
+*.Rproj
+
+# produced vignettes
+vignettes/*.html
+vignettes/*.pdf
+
+#####=== Emacs ===#####
+# -*- mode: gitignore; -*-
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+auto-save-list
+tramp
+.\#*
+
+# Org-mode
+.org-id-locations
+*_archive
+
+# flymake-mode
+*_flymake.*
+
+# eshell files
+/eshell/history
+/eshell/lastdir
+
+# elpa packages
+/elpa/
+
+# reftex files
+*.rel
+
+# AUCTeX auto folder
+/auto/
+
+# cask packages
+.cask/
+
+.Rproj.user

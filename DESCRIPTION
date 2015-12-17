@@ -1,0 +1,32 @@
+Package: cellity
+Type: Package
+Title: Quality Control for Single-Cell RNA-seq Data
+Version: 0.0.1
+Date: 2015-12-17
+Author: Tomislav Ilicic, Davis McCarthy
+Authors@R: c(person("Tomislav", "Ilicic", role=c("aut", "cre"), email="ti243@cam.ac.uk"), person("Davis", "McCarthy", role=c("aut"), email="davis@ebi.ac.uk"))
+Maintainer: Davis McCarthy <davis@ebi.ac.uk>
+Description: A support vector machine approach to identifying and filtering low
+    quality cells from single-cell RNA-seq datasets.
+License: GPL (>= 2)
+Depends:
+    R (>= 3.2)
+Imports:
+    AnnotationDbi,
+    biomaRt,
+    DESeq,
+    e1071,
+    getopt,
+    ggplot2,
+    grid,
+    mvoutlier,
+    topGO
+Suggests:
+    BiocStyle,
+    knitr,
+    testthat
+VignetteBuilder: knitr
+LazyData: true
+biocViews: RNASeq, QualityControl, Preprocessing, Normalization, Visualization,
+    DimensionReduction, Transcriptomics, GeneExpression, Sequencing, Software
+RoxygenNote: 5.0.1
