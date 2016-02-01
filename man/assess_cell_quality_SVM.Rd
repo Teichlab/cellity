@@ -5,7 +5,7 @@
 \title{Assess quality of a cell - SVM version}
 \usage{
 assess_cell_quality_SVM(training_set_features, training_set_labels,
-  test_set_features, ensemble_param)
+  ensemble_param, test_set_features)
 }
 \arguments{
 \item{training_set_features}{A training set containing features (cells x 
@@ -13,10 +13,10 @@ features) for prediction}
 
 \item{training_set_labels}{Annotation of each individual cell if high or low quality (1 or 0 respectively)}
 
+\item{ensemble_param}{Dataframe of parameters for SVM}
+
 \item{test_set_features}{Dataset to predict containing features (cells x 
 features)}
-
-\item{ensemble_param}{Dataframe of parameters for SVM}
 }
 \value{
 Returns a dataframe indicating which cell is low or high quality (0 

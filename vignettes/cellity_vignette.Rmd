@@ -1,262 +1,239 @@
 ---
-title: "Introduction to `cellity`: "
-author: "Davis McCarthy & Tomislav Ilicic"
+title: "Introduction to `cellity`: Single-cell RNA-seq quality control toolkit in R"
+author: "Tomislav Ilicic & Davis McCarthy"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{An introduction to the cellity package}
-  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEngine{rmarkdown::render}
   \usepackage[utf8]{inputenc}
 ---
 
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r}
-summary(cars)
+```{r knitr-options, echo=FALSE, warning=FALSE}
+## To render an HTML version that works nicely with github and web pages, do:
+## rmarkdown::render("vignettes/vignette.Rmd", "all")
+library(knitr)
+opts_chunk$set(fig.align = 'center', fig.width = 6, fig.height = 5, dev = 'png')
+#knitr::opts_chunk$set(echo=FALSE, fig.path='cellity/plot-', cache=TRUE)
+library(ggplot2)
+theme_set(theme_bw(12))
 ```
 
-Here is the code for the case studies and supplemental material for the paper.
+This document gives an introduction to and overview of the functionality of the`cellity` package.
+
+The `cellity` package contains functions to help to identify low quality cells in scRNA-seq data. 
+It extracts biological and technical features from gene expression data that help to detect low quality cells.
+
+Input Requirements: 
+`cellity` requires 1xgene expression matrix (Genes x Cells) and 1x Read statistics matrix (Cells x Metrics) that can be obtained by processing your data first with [`celloline`]. This will map your data and generate a counts-table + statistics about reads. For further details about [`celloline`] please check (https://github.com/ti243/celloline).
+
+The package features:
+
+* ability to extract meaningful biological and technical features from gene expression data
+* PCA-based visualisation of low quality cells and illustration of most informative features
+* SVM-based classification of low quality cells
+
+Future versions of `cellity` may also incorporate:
+
+* Wider range of biological and technical features that could help to distinguish high from low quality cells
+* Alternatives to SVM and PCA for detection and visualisation 
+* More organisms and cell types that are supported by default
+
+To get up and running as quickly as possible, see the different uses cases below. 
+
+## What you need
+
+Assuming you have a matrix containing expression count data summarised at the
+level of genes + a matrix containing read metrics (e.g. number of mapped reads) produced by [`celloline`](https://github.com/ti243/celloline) you are good to go to identify low quality cells in your data. 
+
+Here we use the example data provided with
+the package, which gives us: 
+
+*`sample training data`: counts, read statistics, labels
+*`sample test data`: counts, read statistics, labels
+*`training features`: all, common
+*`test features`: all, common
+
+*sample training data:  a small portion of the original data used in this study (not included in the package due to large size). It contains both the gene expression (Genes x Cells), read statistics for each cell (Cell x Metrics) and labels (cell x label).
+*sample test data:  a different subset of the original data.
+*training features: list containing all and common features. a single feature-matrix contains biological and technical features extracted from the original data.
+*test features:  similar to training features but originates from a different dataset (mES1 in the paper).
+
+These data-sets will help you to understand how to extract your own features, train your own model or simply to use the existing model.
+
+First, lets load the package and all datasets
+```{r, eval=FALSE}
+library(cellity)
+data(sample_counts)
+data(sample_stats)
+```
+
+## Extract biological and technical features
+Now that the data is loaded, we need to normalise the gene expression counts. 
+At the moment counts generated only by HTSeq and Cufflinks are supported. 
+The former counts (HTSEQ) will be normalised by the number of total reads/library size (see below), the latter (Cufflinks) need to be transformed from FPKM to TPM. 
+
+Let us normalise both, the training and test sample data. 
 
 ```{r, eval=FALSE}
-
-################################################################################
-###############################TRAINING DATA RAW COUNTS####################################
-################################################################################
-
-output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
-GO_terms_input="/Users/ti1/Google\ Drive/projects/quality_control/tables/biological_features.txt"
-extra_genes_input="/Users/ti1/Google\ Drive/projects/quality_control/tables/extra_genes.txt"
-common_features_input="/Users/ti1/Google Drive/projects/quality_control/tables/common_features.txt"
-
-
-#LOAD ALL DATA
-GO_terms<-read.table(GO_terms_input, header=FALSE, stringsAsFactors=FALSE)
-extra_genes=read.table(extra_genes_input, header=FALSE, stringsAsFactors=FALSE, fill=TRUE)
-common_features=unlist(read.table(common_features_input, header=FALSE, stringsAsFactors=FALSE, sep=","))
-extra_genes=apply(extra_genes, 1, function(x){
-    return(subset(x, x != ""))
-})
-
-
-input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.sorted.txt"
-data<-read.table(input, header=TRUE)
-genes=data[, 1]
-data=data[,-1]
-rownames(data)=genes
-data=data[,order(colnames(data))]
-
-input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.stats"
-read_metrics=read.table(input, sep=",", header=TRUE)
-read_metrics=read_metrics[which(read_metrics[,1] %in% colnames(data)),]
-read_metrics=read_metrics[order((read_metrics[,1])),]
-
-file_name<-get_file_name_no_ext(input)
-
-qual_i<-grep("_", rownames(data))
-qual_s<-as.character(rownames(data)[qual_i])
-data_qual<-data[qual_i,]
-data[qual_i,]=data[qual_i,]
-
-ercc_i<-grep("ERCC", rownames(data))
-ercc_s<-as.character(rownames(data)[ercc_i])
-counts_ercc<-data[ercc_i,]
-ercc=colSums(counts_ercc)
-ht_seq_features= t(data_qual[c(1, 2),])
-
-read_metrics = cbind(read_metrics, ht_seq_features, ercc)
-counts<-data[-c(ercc_i,qual_i),]
-genes=rownames(counts)
-
-counts_nm<-data.frame(normalise_by_factor(counts, colSums(counts)))
-rownames(counts_nm)=genes
-output_dir="/Users/ti1/Google Drive/projects/quality_control/data/23_11_15"
-file_name=paste0(file_name, "_raw_counts")
-
-features=extract_features(counts_nm, read_metrics, file_name, output_dir , common_features, GO_terms, extra_genes, "mouse")
-
-quality_PCA = asses_cell_quality_PCA(features[[1]], paste0(output_dir, "/", file_name), paste0(file_name, "_all_features"))
-quality_PCA = asses_cell_quality_PCA(features[[2]], paste0(output_dir, "/", file_name), paste0(file_name, "_common_features"))
-
-################################################################################
-#####################TRAINING DATA CUFFLINKS SUPPLEMENT#########################
-################################################################################
-
-# MERGE ALL FPKM COUNTS AND TRANSFORM THEM TO TPM
-# fpkmToTpm <- function(fpkm)
-# {
-#   exp(log(fpkm) - log(sum(fpkm)) + log(1e6))
-# }
-# 
-# 
-# genes_expr<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/", pattern = ".*_cufflinks-2_2_1_Linux_x86_64.counts$", all.files = FALSE,
-#                        full.names = TRUE, recursive = TRUE)
-# 
-# data_complete=sapply(genes_expr, function(x) {
-#   
-#   data<-read.table(x, header=FALSE, stringsAsFactors = F)
-#   return(data[, -1])
-# }, simplify=FALSE)
-# 
-# genes<-read.table(genes_expr[1], header=TRUE)[,1]
-# data=do.call(cbind, data_complete)
-# names=data[1, ]
-# data=data[-1, ]
-# data <- apply(data,2, as.numeric)
-# colnames(data)=names
-# 
-# genes_dup=which(duplicated(genes)==TRUE)
-# isoforms=unique(genes[genes_dup])
-# 
-# genes_dup=sapply(isoforms, function(x) {
-#   
-#   i=which(genes==x)
-#   return(i)  
-# }, simplify=FALSE)
-# genes_dup=unlist(genes_dup)
-# 
-# sums=sapply(isoforms, function(x) {
-#   
-#   i=which(genes==x)
-#   return(colSums(data[i, ]))
-#   
-# }, simplify=FALSE)
-# 
-# duplicates_sums=do.call(rbind, sums)
-# rownames(duplicates_sums)=isoforms
-# 
-# data=data[-genes_dup, ]
-# genes=genes[-genes_dup]
-# rownames(data)=genes
-# 
-# which(rownames(data) %in% rownames(duplicates_sums))
-# data_com=rbind(data, duplicates_sums)
-# genes=rownames(data_com)
-# data_com=fpkmToTpm(data_com) 
-# data_com=data_com[,order(colnames(data_com))]
-
-#write.table(data_com, "/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts")
-data=read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts", header=TRUE)
-labels_original=read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/labels_and_names_detailed_ola_mES.txt", header=TRUE)
-
-#data=data[,which(colnames(data) %in% labels_original[,1])]
-
-input="/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES.stats"
-read_metrics=read.table(input, sep=",", header=TRUE)
-read_metrics=read_metrics[which(read_metrics[,1] %in% colnames(data)),]
-read_metrics=read_metrics[order((read_metrics[,1])),]
-
-file_name<-get_file_name_no_ext("/Users/ti1/Google\ Drive/projects/quality_control/data/original_labels/ola_mES/ola_mES_cufflinks.counts")
-counts_nm=data
-features=extract_features(counts_nm, read_metrics, paste0(file_name, "_cufflinks"), "/Users/ti1/Google Drive/projects/quality_control/data/23_11_15", common_features, GO_terms, extra_genes, "mouse")
-
-################################################################################
-###############################HUMAN SUPPLEMENT DATA############################
-################################################################################
-genes_expr<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/", pattern = ".*\\.counts.txt$", all.files = FALSE,
-                       full.names = TRUE, recursive = TRUE)
-stats<-list.files(path = "/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/", pattern = ".*\\.stats$", all.files = FALSE,
-                  full.names = TRUE, recursive = TRUE)
-extra_genes_human_input="/Users/ti1/Google Drive/projects/quality_control/tables/extra_genes_humans.txt"
-output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
-
-
-features_data_sets=sapply(1:length(genes_expr), function(x){
-    
-    data<-read.table(genes_expr[[x]], header=TRUE)
-    data=data[,order(colnames(data))]
-    
-    read_metrics=read.table(stats[[x]], sep=",", header=TRUE)
-    read_metrics=read_metrics[order((read_metrics[,1])),]
-    
-    file_name<-get_file_name_no_ext(genes_expr[[x]])
-    
-    qual_i<-grep("_", rownames(data))
-    qual_s<-as.character(rownames(data)[qual_i])
-    data_qual<-data[qual_i,]
-    data[qual_i,]=data[qual_i,]
-    
-    ercc_i<-grep("ERCC", rownames(data))
-    ercc_s<-as.character(rownames(data)[ercc_i])
-    counts_ercc<-data[ercc_i,]
-    ercc=colSums(counts_ercc)
-    ht_seq_features= t(data_qual[c(1, 2),])
-    
-    read_metrics = cbind(read_metrics, ht_seq_features, ercc)
-    counts<-data[-c(ercc_i,qual_i),]
-    genes=rownames(counts)
-    counts_nm<-data.frame(normalise_by_factor(counts, colSums(counts)))
-    
-    #LOAD ALL DATA
-    GO_terms<-read.table(GO_terms_input, header=FALSE, stringsAsFactors=FALSE)
-    extra_genes_human=read.table(extra_genes_human_input, header=FALSE, stringsAsFactors=FALSE, fill=TRUE)
-    common_features=unlist(read.table(common_features_input, header=FALSE, stringsAsFactors=FALSE, sep=","))
-    extra_genes_human=apply(extra_genes_human, 1, function(x){
-        return(subset(x, x != ""))
-    })
-    
-    
-    features=extract_features(counts_nm, read_metrics, file_name, output_dir, common_features, GO_terms, extra_genes_human, "human")
-    all=features[[1]]
-    common=features[[2]]
-    return(features)
-}, simplify=FALSE)
-
-
-#CHECK IF SVM PREDICTS HUMAN CELLS
-training_set_common_features=read.table("/Users/ti1/Google Drive/projects/quality_control/data/23_11_15/ola_mES_raw_counts/ola_mES_raw_counts.common.features", header=TRUE)
-training_set_all_features=read.table("/Users/ti1/Google Drive/projects/quality_control/data/23_11_15/ola_mES_raw_counts/ola_mES_raw_counts.all.features", header=TRUE)
-training_set_labels=read.table("/Users/ti1/Google Drive/projects/quality_control/data/30_12/ola_mES/pre_clustering/ola_mES_no_corr_features/labels_and_names_detailed_ola_mES_pca.txt", header=TRUE)
-paramaters_core<-read.table("/Users/ti1/Google\ Drive/projects/quality_control/data/20_11/ola_mES/model_ensemble_param_generic_pca_no_corr_features/ola_mES_generic.ensemble_parameters_boost.txt")
-
-
-training_set_labels=training_set_labels[order(training_set_labels[,1]),]
-quake_common=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/quake_smart_13_HTSeq-0_6_1/quake_smart_13_HTSeq-0_6_1.common.features", header=TRUE)
-quake_all=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/quake_smart_13_HTSeq-0_6_1/quake_smart_13_HTSeq-0_6_1.all.features", header=TRUE)
-
-
-ramskold_common=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/ramskold_2012_cancer_HTSeq-0_6_1/ramskold_2012_cancer_HTSeq-0_6_1.common.features", header=TRUE)
-ramskold_all=read.table("/Users/ti1/Google Drive/projects/quality_control/data/not_annotated_data/ramskold_2012_cancer_HTSeq-0_6_1/ramskold_2012_cancer_HTSeq-0_6_1.all.features", header=TRUE)
-output_dir="/Users/ti1/Google\ Drive/projects/quality_control/data/not_annotated_data/"
-
-
-quality_PCA_rams = asses_cell_quality_PCA(ramskold_all, paste0(output_dir, "/","ramskold_2012_cancer_HTSeq-0_6_1"), paste0("ramskold_2012_cancer_HTSeq-0_6_1", "_all"))
-quality_PCA_quake = asses_cell_quality_PCA(quake_all, paste0(output_dir, "/","quake_smart_13_HTSeq-0_6_1"), paste0("quake_smart_13_HTSeq-0_6_1", "_all"))
-
-
-combined=rbind(quake_common, ramskold_common, training_set_common_features)
-
-pca<-prcomp(combined, scale=TRUE, center=TRUE)
-pca_var_explained=summary(pca)
-
-data_frame<-data.frame(type=c(rep("human1", nrow(quake_common)), rep("human2", nrow(ramskold_common)), training_set_labels[,2]), pca$x)  
-col=c("0" = "red","1" = "darkgreen")
-
-plot<-ggplot(data_frame, aes(x=PC1, y=PC2), size=1) + geom_point(aes(colour=type)) + theme_bw()  + theme(axis.line=element_blank(),
-                                                                                                         axis.text.x=element_text(),axis.text.y=element_text(),
-                                                                                                         axis.ticks.length = unit(0, "mm"),
-                                                                                                         axis.title.x=element_blank(),
-                                                                                                         axis.title.y=element_blank(),
-                                                                                                         legend.position="none",
-                                                                                                         panel.background=element_blank(),
-                                                                                                         panel.border= element_rect(fill=NA,color="black", 
-                                                                                                                                    linetype="solid"),
-                                                                                                         panel.grid.major=element_blank(),
-                                                                                                         panel.grid.minor=element_blank(),
-                                                                                                         plot.background=element_blank()) 
-
-ggsave(paste0(output_dir, "/human_and_mouse_cancer_cells.pdf"), plot, width = 80, height = 90, units="mm")
-
-#PREDICT FROM MOUSE TO QUAKE CELLS
-quality_SVM=asses_cell_quality_SVM(training_set_common_features[, -c(4,5)], training_set_labels[,2], quake_common[, -c(4,5)], paramaters_core)
-length(which((quality_PCA_quake[,2]==quality_SVM[,2])==TRUE))/96
-
-#PREDICT FROM MOUSE TO RAMSKOLD CELLS
-quality_SVM=asses_cell_quality_SVM(training_set_common_features[, -c(4,5)], training_set_labels[,2], ramskold_common[, -c(4,5)], paramaters_core)
-length(which((quality_PCA_rams[,2]==quality_SVM[,2])==TRUE))/18
-
+sample_counts_nm = normalise_by_factor(sample_counts, colSums(sample_counts))
 ```
 
+Once the data has been normalised (library size or TPM) the next step is to extract features. 
+This function will extract biologically meaningful and technical features that will help to distinguish low from high quality cells. 
 
+As this function extracts not only biological, but also technical features, we need to provide the read metrics.
+Let us now extract features from both the training and the test data.
+
+```{r, eval=FALSE}
+sample_features = extract_features(sample_counts_nm, sample_stats)
+```
+
+This will generate a list with two elements. Each entry in the list is a matrix (cells x features).
+The first one will contain all features, the second what we call "common" features. 
+All features can be used to predict low quality cells from the same cell type, whereas common features are cell type independent and should be applicable to any cell type. However, "common" features have less power to detect low quality cells.
+
+The function `extract_features` supports only human and mouse data at the moment with pre-defined features. However, if you want to use your own or additional, or change with features are common, you can do so by providing the data in your own format (check the data structure below) and call:
+
+```{r, eval=FALSE}
+data("feature_info")
+common_features=feature_info[[3]]
+GO_terms=feature_info[[1]]
+extra_genes=feature_info[[2]]
+features_human = extract_features(sample_counts_nm, sample_stats, common_features = common_features, GO_terms = GO_terms, extra_genes = extra_genes, organism = "human")
+```
+
+If some features are not present in the matrix, it means that all of them have the same value (e.g. ERCC are all 0 if no ERCC present in the data).
+
+Once we have extracted all features, we can now do the interesting bit and analyse the quality of our data. 
+To do so, we have two possibilities:
+* PCA-based feature visualisation
+* SVM classification
+* Hybrid approach
+
+
+## PCA-feature based visualisation
+Let us test the PCA-feature based version first, by using all features:
+
+```{r, eval=FALSE}
+sample_features_all=sample_features[[1]]
+sample_qual_pca=assess_cell_quality_PCA(sample_features_all)
+```
+
+The function `assess_cell_quality_PCA` performs PCA on the features and detects outliers applying `uni.plot` in the [`mvoutlier`](https://cran.r-project.org/web/packages/mvoutlier/mvoutlier.pdf) package on the first two dimensions (PC1 and PC2). It returns a two-dimensional matrix with the name of each sample and indication whether the cell is low (0) or high (1) quality.
+
+To be sure that the annotation makes sense, you can specify a output file where the PCA plot will be written to showing low (red) and high (green) quality cells. Moreover, the plot will show the most informative features for PC1 and PC2 and show the distribution between low (red) and high (green) quality cells. 
+
+However, since the sample data is very small, it will be hard to determine low from high quality cells with confidence, as they all will be scattered across the plot. Therefore the more data you have, the more confident you can be in using the PCA-based method. 
+
+See an example below showing PCA of the original training data (all 960 mES cells) and the most informative features by using our already extracted training features. 
+
+```{r, eval=FALSE}
+data(training_mES_features)
+training_mES_features_all=training_mES_features[[1]]
+training_quality_PCA_allF=assess_cell_quality_PCA(training_mES_features_all, file="~/training_quality_PCA_allF.pdf")
+```
+
+As you can see, most cells are green and scattered together, whereas the red cells are outliers. The informative features on the side and bottom tell us that the proportion of intergenic reads are much higher for red cells and correlation of to the mean expression of is lower, compared to green (high quality) cells. This suggests that these red cells are indeed low quality. 
+
+You can than use the [`caret`](https://cran.r-project.org/web/packages/caret/caret.pdf) package to compare the predicted labels with the original labels (if you have any) to see agreement. Please note that this classifier predicts a subtype of low quality cells that are not visible under the microscope (deceptive cells, see paper for more information). Therefore it will give more low quality cells than originally annotated by microscopy. 
+
+```{r, eval=FALSE}
+library(caret)
+data(training_mES_labels)
+lvs <- c("0", "1")
+truth <- factor(training_mES_labels[,2],levels = rev(lvs))
+pred <- factor(training_quality_PCA_allF[,2], levels = rev(lvs))
+confusionMatrix(pred, truth)
+```
+
+Overall we can achieve 90% accuracy, detecting 76% of low quality cells. That is quite good, considering we do not train any classifier. Interestingly, we see the number of intergenic reads in low quality cells to be much higher than in high quality cells. However, low quality cells shower lower correlation to the mean expression, compared to high quality cells. 
+Note: Multiples will usually show a stronger correlation to the mean, if the population is homogenous in size. 
+
+Calling the same function using only common features will result in the plot below (using the full original dataset):
+```{r, eval=FALSE}
+training_mES_features_common=training_mES_features[[2]]
+training_quality_PCA_commonF=assess_cell_quality_PCA(training_mES_features_common, file="~/training_quality_PCA_commonF.pdf")
+```
+Since we do not use all features, our top features are related mostly to mitochondria and cytoplasm (please refer to the paper why that is).
+Let us check the accuracy again by comparing to the original labels:
+```{r, eval=FALSE}
+pred <- factor(training_quality_PCA_commonF[,2], levels = rev(lvs))
+confusionMatrix(pred, truth)
+```
+
+Accuracy now is actually higher, as we detect more high quality cells, however, we detect a slightly lower number of low quality cells. 
+Detection accuracy will here often depend on the data and with which type of low quality cells it is cofounded with. In the case of multiples, PCA-feature based version will not be very successful. Therefore let us try an alternative method.
+
+## SVM classification
+An alternative to the PCA-based approach is to use SVM to classify cells. There are several ways to do so and it will depend if (A) you want to use our data to predict mES cells (B) use our data to predict ANY cell type (C) use your own data to train and predict
+
+#Scenario A: predicting low quality cells in mES data using our original dataset
+Let us consider first the use scenario where you want to use our original 960 mES cells to predict quality of cells on another dataset.
+First, load the features, counts and labels from the original training data (960 mES cells) and our test set (mES1 from the paper).
+
+```{r, eval=FALSE}
+data(mES1_features)
+data(mES1_labels)
+```
+
+This provides us with the full training mES and test set. Now let us use SVM to predict low quality cells on our previous example. To do so, we need to load the hyperparameters wich will optimise SVM classification. Therefore call:
+
+```{r, eval=FALSE}
+data(param_mES_all)
+mES1_features_all=mES1_features[[1]]
+mES1_quality_SVM=assess_cell_quality_SVM(training_mES_features_all, training_mES_labels[,2], param_mES_all, mES1_features_all)
+```
+
+The function `assess_cell_quality_SVM` will perform SVM using an ensemble of models (predict using different combination of parameters, and then vote) to improve accuracy. It returns, similar to the PCA-based version, a matrix with cell names and their label indicating low (0) and high (1) quality cells.
+
+Let us check the accuracy again by comparing to the original labels:
+```{r, eval=FALSE}
+truth <- factor(mES1_labels[,2],levels = rev(lvs))
+pred <- factor(mES1_quality_SVM[,2], levels = rev(lvs))
+confusionMatrix(pred, truth)
+```
+
+It performs quite well by capturing the majority of low quality cells (70%) whilst ensuring to identify also the majority of high quality cells (80%) correctly.  
+
+#Scenario B: predicting low quality cells in ANY data using our original dataset
+If you have cells that are not mouse embryonic stem cells, use can use a subset of features (common) to predict cell quality. This will lower the accuracy, but still give a reasonable estimate of low and high quality cells. In the case of very distant cell types (other organisms, or cancer cells) it might be that the common feature won't be applicable. In this case you need to do go to Scenario C.
+
+Please note that you need to use not common features for both, the training and test-set, AND also parameters optimised for common features. 
+Let us consider the previous example by only using common features.
+
+```{r, eval=FALSE}
+data(param_mES_common)
+training_mES_features_common=training_mES_features[[2]]
+mES1_features_common=mES1_features[[2]]
+mES1_quality_SVM_common=assess_cell_quality_SVM(training_mES_features_common, training_mES_labels[,2], param_mES_common, mES1_features_common)
+```
+
+When we now compare accuracy to the original labels we can see that it performs worse than before.
+```{r, eval=FALSE}
+truth <- factor(mES1_labels[,2],levels = rev(lvs))
+pred <- factor(mES1_quality_SVM_common[,2], levels = rev(lvs))
+confusionMatrix(pred, truth)
+```
+
+#Scenario C.: predicting low quality cells in ANY data using YOUR OWN training set
+The last scenario is the most complicated and time consuming. 
+Here you have let's say T-cells and want to be sure that you remove most of your low quality cells. As microscopic annotation can be very time-consuming you don't want to spend days in the lab to check every individual cell and probably make quite a few mistakes (e.g. multiples are hard to identify if you do not invest enough time).
+
+The best approach that will save you time and still give good prediction accuracy, is to annotate a subset of your data with microscopy. 
+You use this subset to extract all features and train your own SVM classifier to predict the remainder of the not annotated cells. 
+However, you might have to estimate hyperparameters (which I won't discuss here as it will be out of scope) but it may work with the optimised hyperparameters we have used above for the original trainings set. 
+
+## Hybrid approach: PCA-feature based + SVM
+What I would recommend is the hybrid approach, where you (1) perform the PCA approach on your data, (2) check if it is reasonable and subsequently (3) use our training data (or ideally your own annotated training data) to predict quality of your cells cells. You can than check how well they agree and decide for which version you will go for. 
+
+Let us compare the accuracy between the PCA-feature based and SVM version using all features on our mES1 test example:
+```{r, eval=FALSE}
+#PCA QUALITY
+mES1_quality_PCA=assess_cell_quality_PCA(mES1_features_all)
+truth <- factor(mES1_labels[,2],levels = rev(lvs))
+pred <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
+confusionMatrix(pred, truth)
+```
+We can see that now the PCA-feature based version performs not as good as the SVM version using all features, so we would choose the SVM version. 
+Of course we won't have this information always, but usually both versions should be in good agreement with each other. So if your data you predict on is the same as the training data (in this case mES) you can probably rely more on the SVM version more and do PCA as a control to see if overall it makes sense. 

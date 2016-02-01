@@ -11,6 +11,9 @@ normalise_by_factor(counts, norm_factor)
 
 \item{norm_factor}{vector of normalisation factors}
 }
+\value{
+a matrix with normalized gene counts
+}
 \description{
 Internal function to normalize by library size
 }

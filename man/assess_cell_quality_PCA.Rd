@@ -4,10 +4,10 @@
 \alias{assess_cell_quality_PCA}
 \title{ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION}
 \usage{
-assess_cell_quality_PCA(test_set_features, output_dir, prefix)
+assess_cell_quality_PCA(features, file = "")
 }
 \arguments{
-\item{test_set_features}{Input dataset containing features (cell x features)}
+\item{features}{Input dataset containing features (cell x features)}
 
 \item{output_dir}{Output directory}
 

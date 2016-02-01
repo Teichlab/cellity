@@ -17,6 +17,9 @@ multiplot(..., plotlist = NULL, file, cols = 6, layout = NULL)
 
 \item{layout}{matrix defining the layout for the plots}
 }
+\value{
+a plot object
+}
 \description{
 Internal multiplot function to combine plots onto a grid
 }

@@ -4,8 +4,8 @@
 \alias{extract_features}
 \title{Extracts biological and technical features for given dataset}
 \usage{
-extract_features(counts_nm, read_metrics, prefix, output_dir, common_features,
-  GO_terms, extra_genes, organism)
+extract_features(counts_nm, read_metrics, prefix = "", output_dir = "",
+  common_features, GO_terms, extra_genes, organism = "mouse")
 }
 \arguments{
 \item{counts_nm}{Gene expression counts dataframe (genes x cells). Either 
