@@ -323,6 +323,60 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 }
 
 ################################################################################
+## uni.plot
+
+#' Internal function to detect outliers
+#' 
+#' @param x A matrix containing counts
+#' @importFrom robustbase covMcd
+#' @importFrom mvoutlier arw
+uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025, ...)  {
+  if (!is.matrix(x) && !is.data.frame(x)) 
+    stop("x must be matrix or data.frame")
+  if (ncol(x) < 2) 
+    stop("x must be at least two-dimensional")
+  if (ncol(x) > 10) 
+    stop("x should not be more than 10-dimensional")
+  rob <- covMcd(x, alpha = quan)
+  xarw <- mvoutlier::arw(x, rob$center, rob$cov, alpha = alpha)
+  if (xarw$cn != Inf) {
+    alpha <- sqrt(c(xarw$cn, qchisq(c(0.75, 0.5, 0.25), ncol(x))))
+  }
+  else {
+    alpha <- sqrt(qchisq(c(0.975, 0.75, 0.5, 0.25), ncol(x)))
+  }
+  dist <- mahalanobis(x, center = rob$center, cov = rob$cov)
+  sx <- matrix(NA, nrow = nrow(x), ncol = ncol(x))
+  for (i in 1:ncol(x)) sx[, i] <- (x[, i] - xarw$m[i])/sqrt(xarw$c[i, 
+                                                                   i])
+  r <- range(sx)
+  if (symb == FALSE) {
+    for (i in 1:ncol(x)) {
+     
+      o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
+                                                        dim(x)[2]))))
+      l <- list(outliers = o, md = sqrt(dist))
+    }
+  }
+  if (symb == TRUE) {
+    rd <- sqrt(dist)
+    lpch <- c(3, 3, 16, 1, 1)
+    lcex <- c(1.5, 1, 0.5, 1, 1.5)
+    lalpha <- length(alpha)
+    xs <- scale(x) - min(scale(x))
+    eucl <- sqrt(apply(xs^2, 1, sum))
+    rbcol <- rev(rainbow(nrow(x), start = 0, end = 0.7))[as.integer(cut(eucl, 
+                                                                        nrow(x), labels = 1:nrow(x)))]
+   
+    o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
+                                                      dim(x)[2]))))
+    l <- list(outliers = o, md = sqrt(dist), euclidean = eucl)
+  }
+  par(yaxt = "s")
+  l
+}
+
+################################################################################
 ## assess_cell_quality_PCA
 
 #' ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION
@@ -337,7 +391,6 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 #' or 1 respectively)
 #' 
 #' @importFrom mvoutlier pcout
-#' @importFrom mvoutlier uni.plot
 #' @export
 #' 
 assess_cell_quality_PCA <- function(features, file="") {
@@ -348,7 +401,7 @@ assess_cell_quality_PCA <- function(features, file="") {
   pcout_c <- mvoutlier::pcout(pca$x[, 1:2])
   dimens <- min(10, ncol(features))
   low_qual_i <- which(pcout_c$wfinal01 == 0)
-  uni_2 <- mvoutlier::uni.plot(pca$x[, 1:2])
+  uni_2 <- (uni.plot(pca$x[, 1:2]))
   low_qual_i = which(uni_2$outliers == TRUE)
   
   mtdna_i=grep("mtDNA", colnames(features))
