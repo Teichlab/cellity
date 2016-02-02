@@ -90,7 +90,7 @@ and functionality of `cellity`.
 
 ## `cellity` workflow
 
-The diagram below provised an overview of the functionallity of `cellity` and its partner tool `celloline`(https://github.com/ti243/celloline).
+The diagram below provides an overview of the functionallity of `cellity` and its partner tool `celloline`(https://github.com/ti243/celloline).
 
 ![Diagram outlining the cellity workflow](inst/cellity_overview.png)
 
@@ -113,7 +113,7 @@ To get both pieces of data, use `celloline`(https://github.com/ti243/celloline) 
 
 ### Visualisation of low quality cells `assess_cell_quality_PCA`
 
-The `assess_cell_quality_PCA` function provides the ability to visualise low quality cells by peforming a PCA on features. It than uses an outlier detection algorithm to determine what are high and low quality cells. Moreover, it outputs the most informative features that can indicate what is going on in these cells in terms of quality.
+The `assess_cell_quality_PCA` function provides the ability to visualise low quality cells by performing a PCA on features. It than uses an outlier detection algorithm to determine what are high and low quality cells. Moreover, it outputs the most informative features that can indicate what is going on in these cells in terms of quality.
 
 ### Classification of low quality cells `assess_cell_quality_SVM`
 
@@ -125,4 +125,4 @@ package is settled, but it is still under development so may change from time
 to time. Please do try it and contact me with bug reports, feedback, feature 
 requests, questions and suggestions to improve the package.
 
-Tomislav Ilicic & Davis McCarthy, Februrary 2016
+Tomislav Ilicic & Davis McCarthy, February 2016

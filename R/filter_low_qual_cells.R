@@ -25,12 +25,20 @@
 #' @export
 #' 
 extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="", 
-                             common_features, GO_terms, extra_genes, organism="mouse") {
+                             common_features=NULL, GO_terms=NULL, extra_genes=NULL, organism="mouse") {
   
   data(feature_info)
-  common_features=feature_info[[3]]
-  GO_terms=feature_info[[1]]
-  extra_genes=feature_info[[2]]
+  if(is.null(common_features)) {
+    common_features=feature_info[[3]]
+  }
+  
+  if(is.null(GO_terms)) {
+    GO_terms=feature_info[[1]]
+  }
+  
+  if(is.null(extra_genes)) {
+    extra_genes=feature_info[[2]]
+  }
   
   info("Extracting features")
   
@@ -72,6 +80,153 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 }
 
 ################################################################################
+## assess_cell_quality_SVM
+
+#' Assess quality of a cell - SVM version
+#' 
+#' @param training_set_features A training set containing features (cells x 
+#' features) for prediction
+#' @param training_set_labels Annotation of each individual cell if high or low quality (1 or 0 respectively)
+#' @param test_set_features Dataset to predict containing features (cells x 
+#' features)
+#' @param ensemble_param Dataframe of parameters for SVM
+#' @return Returns a dataframe indicating which cell is low or high quality (0 
+#' or 1 respectively)
+#' 
+#' @details This function takes a traning set + annotation to predict a test 
+#' set. It requires that hyper-parameters have been optimised. 
+#' 
+#' @return data.frame with decision on quality of cells
+#' 
+#' @importFrom e1071 svm
+#' @export
+#' 
+assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
+                                    ensemble_param, test_set_features) {
+  
+  data_set <- data.frame(l = training_set_labels, 
+                         unlist(as.matrix(training_set_features)))
+  data_set$l <- as.factor(data_set$l)
+  test_data <- data.frame(as.matrix(test_set_features))
+  form <- formula("l ~ .")
+  
+  final_results <- sapply(1:nrow(ensemble_param), function(x) {
+    parameters <- ensemble_param[x,]
+    weights <- table(data_set$l) 
+    weights[1] <- parameters[3]
+    weights[2] <- 1
+    kernel <- "radial"
+    
+    model <- e1071::svm(form, data = data_set, gamma = parameters[1], 
+                        cost = parameters[2], kernel = kernel, 
+                        class.weights = weights)
+    
+    pred_test <- predict(model, test_data)
+    svm_test <- as.numeric(levels(pred_test))[pred_test]
+    return(svm_test)
+  }, simplify = FALSE)
+  final_results <- do.call(cbind, final_results)
+  
+  #Voting scheme to determine final label
+  final <- vote(final_results)
+  final_df <- data.frame(cell = rownames(test_set_features), quality = final)
+  return(final_df)
+}
+
+
+################################################################################
+## assess_cell_quality_PCA
+
+#' ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION
+#' 
+#' @param features Input dataset containing features (cell x features)
+#' @param file  Output_file where plot is saved
+#' 
+#' @details This function applies PCA on features and uses outlier detection to
+#'  determine which cells are low and which are high quality
+#' @return Returns a dataframe indicating which cell is low or high quality (0 
+#' or 1 respectively)
+#' 
+#' @importFrom mvoutlier pcout
+#' @export
+#' 
+assess_cell_quality_PCA <- function(features, file="") {
+  
+  ## perform PCA
+  pca <- prcomp(features, scale = TRUE, center = TRUE)
+  pca_var_explained <- summary(pca)
+  pcout_c <- mvoutlier::pcout(pca$x[, 1:2])
+  dimens <- min(10, ncol(features))
+  low_qual_i <- which(pcout_c$wfinal01 == 0)
+  uni_2 <- (uni.plot(pca$x[, 1:2]))
+  low_qual_i = which(uni_2$outliers == TRUE)
+  
+  #DETERMINE WHICH OF TWO POPULATIONS ARE OUTLIERS.
+  #RELY ON THAT IF MTDNA HIGH OR MAPPED PROP LOW, IT IS LOW QUALITY 
+  #IF NOT AVAILABLE, ASSUME THAT CLUSTER WITH SMALLER NUMBER OF CELLS LOW QUALITY
+  mtdna = NA
+  mtdna_i=grep("mtDNA", colnames(features))
+  if(length(mtdna_i) > 0) {
+    mtdna <- t.test(features[,mtdna_i][low_qual_i], 
+                    features[,mtdna_i][-low_qual_i], 
+                    alternative = "greater")$p.value
+  } 
+  mapped_prop_i=grep("Mapped", colnames(features))
+  
+  
+  mapped_prop = NA
+  if(length(grep("Mapped", colnames(features))) > 0) {
+    
+    mapped_prop <- t.test(features[,mapped_prop_i][low_qual_i], 
+                          features[,mapped_prop_i][-low_qual_i], 
+                          alternative = "less")$p.value
+  } 
+  types <- rep(1, nrow(features))
+  #Determine which cluster is low and which high quality
+  if (!is.na(mapped_prop) && !is.na(mtdna)) {
+    if (mapped_prop > 0.5 && mtdna > 0.5) {
+      types[-low_qual_i] <- 0
+    } else{
+      types[low_qual_i] = 0
+    }
+  } else {
+    popul_1 = length(low_qual_i) 
+    popul_2 = nrow(features) - length(low_qual_i)
+    if (popul_1 <  popul_2) {
+      types[low_qual_i] = 0
+    } else {
+      types[-low_qual_i] = 0
+    }
+  }
+  annot <- data.frame(cell = rownames(features), quality = types)
+  
+  
+  #PLOT PCA + MOST INFORMATIVE FEATURES
+  if(file != "") {
+    ## define data frame with cell types
+    col <- c("0" = "red","1" = "darkgreen")
+    plot_pca(features, as.character(types), pca, col, output_file=file)
+  }
+  return(annot)
+}
+
+
+################################################################################
+## normalise_by_factor
+
+#' Internal function to normalize by library size
+#' 
+#' @param counts matrix of counts
+#' @param norm_factor vector of normalisation factors
+#' @return a matrix with normalized gene counts
+#' 
+#' @export
+#' 
+normalise_by_factor <- function(counts, norm_factor) { 
+  return(t(t(counts) / norm_factor))
+}
+
+################################################################################
 
 #' Helper Function to create all features
 #' 
@@ -99,14 +254,8 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   counts_nm <- data.frame(counts_nm)
   genes_mean <- rowMeans(counts_nm)
   genes_zero <- which(genes_mean == 0)
-  
-  if(length(genes_zero) > 0) {
-    genes_mean <- genes_mean[-genes_zero]
-    counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
-  } else {
-    genes_mean <- genes_mean
-    counts_nm_mean <- counts_nm/ genes_mean
-  }
+  genes_mean <- genes_mean[-genes_zero]
+  counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
   
   ########################################
   ####TECHINCAL FEATURES##################
@@ -199,6 +348,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   GO_CC <- topGO::annFUN.org("CC", mapping = "org.Mm.eg.db", ID = "ensembl")
   
   if ( organism == "human" ) {
+    
     GO_BP <- topGO::annFUN.org("BP", mapping = "org.Hs.eg.db", 
                                ID = "ensembl")  
     GO_CC <- topGO::annFUN.org("CC", mapping = "org.Hs.eg.db", 
@@ -217,21 +367,29 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   go_names <- sapply(go_names, simple_cap)
   colnames(go_prop) <- go_names 
   
+  #CYTOPLASM AND MEMBRANE PRESENT IN GO TERMS
+  m_i=which(GO_terms[,1]  == "GO:0016020")
+  c_i=which(GO_terms[,1]  ==  "GO:0005737")
+  
+  volume_surface_ratio = matrix(0, ncol(counts_nm))
+  if (length(m_i) > 0 && length(c_i) > 0 && sum(go_prop[, c_i]) > 0) {
+    volume_surface_ratio=go_prop[, m_i]/go_prop[, c_i]
+  }
+  
   #PROPORTION OF MAPPED READS MAPPED TO SPECIFIC GENES
   extra_genes_prop <- sapply(extra_genes, function(extra_g) {
-    #print(extra_g[1])
-    prop <- sum_prop(counts_nm, extra_g[-1]) 
+    prop <- sum_prop(counts_nm, extra_g) 
     return(prop)
   }, simplify = FALSE)
   extra_genes_prop <- do.call(cbind, extra_genes_prop)
-  colnames(extra_genes_prop) <- names(extra_genes)
+  colnames(extra_genes_prop) <- unlist(names(extra_genes))
   
   biological_features <- cbind(go_prop, extra_genes_prop)
   colnames(biological_features) <- paste0(colnames(biological_features), " %")
   
-  features <- data.frame(techincal_features, biological_features)
+  features <- data.frame(techincal_features, biological_features, volume_surface_ratio)
   colnames(features) <- c(colnames(techincal_features), 
-                          colnames(biological_features))
+                          colnames(biological_features), "Volume-surface ratio")
   rownames(features) <- colnames(counts_nm)
   return(features)
 }
@@ -252,7 +410,6 @@ sum_prop <- function(counts, genes_interest) {
   genes_interest_counts_prop <- colSums(counts[genes_interest_i,])
   return(genes_interest_counts_prop)
 }
-
 ################################################################################
 ## simple_cap
 
@@ -264,60 +421,6 @@ simple_cap <- function(x) {
   s <- strsplit(x, " ")[[1]]
   paste(toupper(substring(s, 1,1)), substring(s, 2),
         sep = "", collapse = " ")
-}
-
-################################################################################
-## assess_cell_quality_SVM
-
-#' Assess quality of a cell - SVM version
-#' 
-#' @param training_set_features A training set containing features (cells x 
-#' features) for prediction
-#' @param training_set_labels Annotation of each individual cell if high or low quality (1 or 0 respectively)
-#' @param test_set_features Dataset to predict containing features (cells x 
-#' features)
-#' @param ensemble_param Dataframe of parameters for SVM
-#' @return Returns a dataframe indicating which cell is low or high quality (0 
-#' or 1 respectively)
-#' 
-#' @details This function takes a traning set + annotation to predict a test 
-#' set. It requires that hyper-parameters have been optimised. 
-#' 
-#' @return data.frame with decision on quality of cells
-#' 
-#' @importFrom e1071 svm
-#' @export
-#' 
-assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
-                                    ensemble_param, test_set_features) {
-  
-  data_set <- data.frame(l = training_set_labels, 
-                         unlist(as.matrix(training_set_features)))
-  data_set$l <- as.factor(data_set$l)
-  test_data <- data.frame(as.matrix(test_set_features))
-  form <- formula("l ~ .")
-  
-  final_results <- sapply(1:nrow(ensemble_param), function(x) {
-    parameters <- ensemble_param[x,]
-    weights <- table(data_set$l) 
-    weights[1] <- parameters[3]
-    weights[2] <- 1
-    kernel <- "radial"
-    
-    model <- e1071::svm(form, data = data_set, gamma = parameters[1], 
-                        cost = parameters[2], kernel = kernel, 
-                        class.weights = weights)
-    
-    pred_test <- predict(model, test_data)
-    svm_test <- as.numeric(levels(pred_test))[pred_test]
-    return(svm_test)
-  }, simplify = FALSE)
-  final_results <- do.call(cbind, final_results)
-  
-  #Voting scheme to determine final label
-  final <- vote(final_results)
-  final_df <- data.frame(cell = rownames(test_set_features), quality = final)
-  return(final_df)
 }
 
 ################################################################################
@@ -353,7 +456,7 @@ uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
   r <- range(sx)
   if (symb == FALSE) {
     for (i in 1:ncol(x)) {
-     
+      
       o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
                                                         dim(x)[2]))))
       l <- list(outliers = o, md = sqrt(dist))
@@ -368,77 +471,13 @@ uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
     eucl <- sqrt(apply(xs^2, 1, sum))
     rbcol <- rev(rainbow(nrow(x), start = 0, end = 0.7))[as.integer(cut(eucl, 
                                                                         nrow(x), labels = 1:nrow(x)))]
-   
+    
     o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
                                                       dim(x)[2]))))
     l <- list(outliers = o, md = sqrt(dist), euclidean = eucl)
   }
   par(yaxt = "s")
   l
-}
-
-################################################################################
-## assess_cell_quality_PCA
-
-#' ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION
-#' 
-#' @param features Input dataset containing features (cell x features)
-#' @param file  Output_file where plot is saved
-#' 
-#' @details This function applies PCA on features and uses outlier detection to
-#'  determine which cells are low and which are high quality
-#' @return Returns a dataframe indicating which cell is low or high quality (0 
-#' or 1 respectively)
-#' 
-#' @importFrom mvoutlier pcout
-#' @export
-#' 
-assess_cell_quality_PCA <- function(features, file="") {
-  
-  ## perform PCA
-  pca <- prcomp(features, scale = TRUE, center = TRUE)
-  pca_var_explained <- summary(pca)
-  pcout_c <- mvoutlier::pcout(pca$x[, 1:2])
-  dimens <- min(10, ncol(features))
-  low_qual_i <- which(pcout_c$wfinal01 == 0)
-  uni_2 <- (uni.plot(pca$x[, 1:2]))
-  low_qual_i = which(uni_2$outliers == TRUE)
-  
-  mtdna_i=grep("mtDNA", colnames(features))
-  if(length(mtdna_i) > 0) {
-    mtdna <- t.test(features[,mtdna_i][low_qual_i], 
-                    features[,mtdna_i][-low_qual_i], 
-                    alternative = "greater")$p.value
-  } 
-  mapped_prop_i=grep("Mapped", colnames(features))
-  
-  if(length(grep("Mapped", colnames(features))) > 0) {
-    
-    mapped_prop <- t.test(features[,mapped_prop_i][low_qual_i], 
-                          features[,mapped_prop_i][-low_qual_i], 
-                          alternative = "less")$p.value
-  }
-  
-  #Determine which cluster is low and which high quality
-  if (mapped_prop > 0.5 && mtdna > 0.5) {
-    types <- rep(0, nrow(features))
-    types[low_qual_i] <- 1
-    
-  } else{
-    types <- rep(1, nrow(features))
-    types[low_qual_i] = 0
-  }
-  
-  annot <- data.frame(cell = rownames(features), quality = types)
-  
-  
-  #PLOT PCA + MOST INFORMATIVE FEATURES
-  if(file != "") {
-    ## define data frame with cell types
-    col <- c("0" = "red","1" = "darkgreen")
-    plot_pca(features, as.character(types), pca, col, output_file=file)
-  }
-  return(annot)
 }
 
 
@@ -636,19 +675,4 @@ vote <- function(predictions) {
 #' 
 info <- function(string) { 
   print(paste0("[INFO]:", string))
-}
-
-################################################################################
-## normalise_by_factor
-
-#' Internal function to normalize by library size
-#' 
-#' @param counts matrix of counts
-#' @param norm_factor vector of normalisation factors
-#' @return a matrix with normalized gene counts
-#' 
-#' @export
-#' 
-normalise_by_factor <- function(counts, norm_factor) { 
-  return(t(t(counts) / norm_factor))
 }
