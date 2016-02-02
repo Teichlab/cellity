@@ -7,29 +7,18 @@
 \format{a list with 2 elements (all_features, common_features).}
 \source{
 Wellcome Trust Sanger Institute
-
-Wellcome Trust Sanger Institute
 }
 \usage{
-training_mES_features
-
 training_mES_features
 }
 \value{
 NULL, but makes available a list with 2 dataframes
-
-NULL, but makes available a dataframe with cell annotations
 }
 \description{
 This list contains 2 dataframes
 where each contains features per cell (cell X features) that can be used for classification.
-
-This data frame has 2 columns:
-First showing cell names, the second indicating if cell is of low (0) or high (1) quality
 }
 \author{
-Tomislav Ilicic & Davis McCarthy, 2015-03-05
-
 Tomislav Ilicic & Davis McCarthy, 2015-03-05
 }
 

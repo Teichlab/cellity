@@ -14,6 +14,8 @@ plot_pca(features, annot, pca, col, output_file)
 \item{pca}{PCA of features}
 
 \item{col}{color code indicating what color high and what low quality cells}
+
+\item{output_file}{where plot is stored}
 }
 \value{
 Plots of PCA

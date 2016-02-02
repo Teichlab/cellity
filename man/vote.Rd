@@ -7,7 +7,7 @@
 vote(predictions)
 }
 \arguments{
-\item{predicitions}{Predicted labels}
+\item{predictions}{Predicted labels}
 }
 \description{
 Internal voting function to get final labels

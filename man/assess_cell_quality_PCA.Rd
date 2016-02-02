@@ -9,9 +9,7 @@ assess_cell_quality_PCA(features, file = "")
 \arguments{
 \item{features}{Input dataset containing features (cell x features)}
 
-\item{output_dir}{Output directory}
-
-\item{prefix}{Prefix of output}
+\item{file}{Output_file where plot is saved}
 }
 \value{
 Returns a dataframe indicating which cell is low or high quality (0 

@@ -13,7 +13,7 @@
 #' @param GO_terms DataFrame with gene ontology term IDs, that will be used in 
 #' feature extraction
 #' @param extra_genes Additional genes used for feature extraction
-#' @param Organism The target organism to generate the features for
+#' @param organism The target organism to generate the features for
 #' 
 #' @details This function takes a combination of gene counts and mapping 
 #' statistics to extract biological and technical features, which than can be 
@@ -79,12 +79,10 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 #' normalised by library size or TPM values
 #' @param read_metrics Dataframe with mapping statistics produced by python 
 #' pipeline
-#' @param common_features Subset of features that are applicable within one 
-#' species, but across cell types
 #' @param GO_terms DataFrame with gene ontology term IDs, that will be used in 
 #' feature extraction
 #' @param extra_genes Additional genes used for feature extraction
-#' @param Organism The target organism to generate the features for
+#' @param organism The target organism to generate the features for
 #' 
 #' @importFrom AnnotationDbi Term
 #' @importFrom topGO annFUN.org
@@ -246,7 +244,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
 #' Supports TPM and proportion of mapped reads.
 #' 
 #' @param counts Normalised gene expression count matrix
-#' @param gene_interest dataframe of genes of interest to merge
+#' @param genes_interest dataframe of genes of interest to merge
 #' 
 #' 
 sum_prop <- function(counts, genes_interest) {
@@ -325,12 +323,15 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 ################################################################################
 ## uni.plot
 
-#' Internal function to detect outliers
-#' 
+#' Internal function to detect outliers from the mvoultier pacakge
+#' Modified slightly so that plots are not printed
 #' @param x A matrix containing counts
+#' @param symb Symbols
+#' @param quan quan
+#' @param alpha alpha
 #' @importFrom robustbase covMcd
 #' @importFrom mvoutlier arw
-uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025, ...)  {
+uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
   if (!is.matrix(x) && !is.data.frame(x)) 
     stop("x must be matrix or data.frame")
   if (ncol(x) < 2) 
@@ -382,8 +383,7 @@ uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025, ...)  {
 #' ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION
 #' 
 #' @param features Input dataset containing features (cell x features)
-#' @param output_dir Output directory
-#' @param prefix Prefix of output 
+#' @param file  Output_file where plot is saved
 #' 
 #' @details This function applies PCA on features and uses outlier detection to
 #'  determine which cells are low and which are high quality
@@ -451,6 +451,7 @@ assess_cell_quality_PCA <- function(features, file="") {
 #' @param annot Matrix annotation of each cell
 #' @param pca PCA of features
 #' @param col color code indicating what color high and what low quality cells
+#' @param output_file where plot is stored
 #' 
 #' @details This function plots PCA of all features + most informative features
 #' @return Plots of PCA
@@ -614,7 +615,7 @@ multiplot <- function(..., plotlist = NULL, file, cols = 6, layout = NULL) {
 
 #' Internal voting function to get final labels
 #' 
-#' @param predicitions Predicted labels
+#' @param predictions Predicted labels
 #' 
 vote <- function(predictions) {
   freq <- apply(predictions, 1, function(x) {

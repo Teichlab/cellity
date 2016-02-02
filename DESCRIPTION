@@ -13,10 +13,7 @@ Depends:
     R (>= 3.2)
 Imports:
     AnnotationDbi,
-    biomaRt,
-    DESeq,
     e1071,
-    getopt,
     ggplot2,
     grid,
     mvoutlier,

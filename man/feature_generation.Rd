@@ -18,10 +18,7 @@ feature extraction}
 
 \item{extra_genes}{Additional genes used for feature extraction}
 
-\item{common_features}{Subset of features that are applicable within one 
-species, but across cell types}
-
-\item{Organism}{The target organism to generate the features for}
+\item{organism}{The target organism to generate the features for}
 }
 \value{
 Returns the entire set of features in a data.frame

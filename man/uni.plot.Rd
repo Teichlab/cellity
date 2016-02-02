@@ -2,14 +2,22 @@
 % Please edit documentation in R/filter_low_qual_cells.R
 \name{uni.plot}
 \alias{uni.plot}
-\title{Internal function to detect outliers}
+\title{Internal function to detect outliers from the mvoultier pacakge
+Modified slightly so that plots are not printed}
 \usage{
-uni.plot(x, symb = FALSE, quan = 1/2, alpha = 0.025, ...)
+uni.plot(x, symb = FALSE, quan = 1/2, alpha = 0.025)
 }
 \arguments{
 \item{x}{A matrix containing counts}
+
+\item{symb}{Symbols}
+
+\item{quan}{quan}
+
+\item{alpha}{alpha}
 }
 \description{
-Internal function to detect outliers
+Internal function to detect outliers from the mvoultier pacakge
+Modified slightly so that plots are not printed
 }
 

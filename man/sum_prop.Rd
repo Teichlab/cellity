@@ -9,7 +9,7 @@ sum_prop(counts, genes_interest)
 \arguments{
 \item{counts}{Normalised gene expression count matrix}
 
-\item{gene_interest}{dataframe of genes of interest to merge}
+\item{genes_interest}{dataframe of genes of interest to merge}
 }
 \description{
 Supports TPM and proportion of mapped reads.

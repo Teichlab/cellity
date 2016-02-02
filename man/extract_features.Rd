@@ -26,7 +26,7 @@ feature extraction}
 
 \item{extra_genes}{Additional genes used for feature extraction}
 
-\item{Organism}{The target organism to generate the features for}
+\item{organism}{The target organism to generate the features for}
 }
 \value{
 a list with two elements, one providing all features, and one 
