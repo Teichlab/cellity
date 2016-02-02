@@ -96,13 +96,13 @@ NULL
 #' @author Tomislav Ilicic & Davis McCarthy, 2015-03-05
 NULL
 
-#' @name training_mES_features
+#' @name training_mES_labels
 #' @title Original training dataset containing annotation of cells
 #' @description This data frame has 2 columns:
 #' First showing cell names, the second indicating if cell is of low (0) or high (1) quality
 #' @return NULL, but makes available a dataframe with cell annotations
 #' @docType data
-#' @usage training_mES_features
+#' @usage training_mES_labels
 #' @format a dataframe with 2 columns (cell_names, label).
 #' @source Wellcome Trust Sanger Institute
 #' @author Tomislav Ilicic & Davis McCarthy, 2015-03-05
