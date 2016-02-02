@@ -1,5 +1,5 @@
 ---
-title: "Introduction to `cellity`: Single-cell RNA-seq quality control toolkit in R"
+title: "Introduction to `cellity`: Classification of low quality cells in scRNA-seq data using R"
 author: "Tomislav Ilicic & Davis McCarthy"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
