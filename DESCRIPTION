@@ -10,15 +10,19 @@ Description: A support vector machine approach to identifying and filtering low
     quality cells from single-cell RNA-seq datasets.
 License: GPL (>= 2)
 Depends:
-    R (>= 3.2)
+    R (>= 3.3)
 Imports:
     AnnotationDbi,
     e1071,
     ggplot2,
+    graphics,
+    grDevices,
     grid,
     mvoutlier,
     robustbase,
-    topGO
+    stats,
+    topGO,
+    utils
 Suggests:
     BiocStyle,
     knitr,
@@ -26,5 +30,5 @@ Suggests:
 VignetteBuilder: knitr
 LazyData: true
 biocViews: RNASeq, QualityControl, Preprocessing, Normalization, Visualization,
-    DimensionReduction, Transcriptomics, GeneExpression, Sequencing, Software
+    DimensionReduction, Transcriptomics, GeneExpression, Sequencing, Software, SupportVectorMachine
 RoxygenNote: 5.0.1

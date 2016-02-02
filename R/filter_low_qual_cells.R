@@ -22,53 +22,60 @@
 #' @return a list with two elements, one providing all features, and one 
 #' providing common features.
 #' 
+#' @importFrom utils write.table data
+#' 
 #' @export
 #' 
 extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="", 
-                             common_features, GO_terms, extra_genes, organism="mouse") {
-  
-  data(feature_info)
-  common_features=feature_info[[3]]
-  GO_terms=feature_info[[1]]
-  extra_genes=feature_info[[2]]
-  
-  info("Extracting features")
-  
-  ## define genes
-  genes <- rownames(counts_nm)
-  if (is.null(genes) | length(genes) == 0) {
-    info("Please annotate your expression matrix with genes identifiers as rownames")
-    return(NULL)
-  }
-  
-  #GENERATE ALL FEATURES       
-  features_all <- feature_generation(counts_nm, read_metrics, GO_terms, 
-                                     extra_genes, organism)
-  info(paste0("Features extracted."))
-  sds <- apply(features_all, 2, sd)
-  #REMOVE 0-VARIANCE VALUE FEATURES
-  features_all <- features_all[,sds != 0]
-  types <- c("all", "common")
-  ## define common features
-  features_common <- features_all[, which(colnames(features_all) %in% 
-                                            common_features)]
-  ## write features to file if required
-  if (prefix != "" && output_dir != "") {
-    ## define output directory and create if needed
-    o <- paste(output_dir, prefix, sep = "/")
-    print(output_dir)
-    dir.create(o, showWarnings = TRUE, recursive = TRUE)
+                             common_features = NULL, GO_terms = NULL, 
+                             extra_genes = NULL, organism="mouse") {
+    if ( any(is.null(common_features) || is.null(GO_terms) || is.null(extra_genes)) ) {
+        data("feature_info", envir = environment())
+        if ( is.null(common_features) )
+            common_features <- feature_info[[3]]
+        if ( is.null(GO_terms) )
+            GO_terms <- feature_info[[1]]
+        if ( is.null(extra_genes) )
+            extra_genes <- feature_info[[2]]
+    }
     
-    ## NB may be better to use file.path() for defining output files
-    f_all = file.path(o, paste0(prefix, ".", types[1], ".features"))
-    f_common = file.path(o, paste0(prefix, ".", types[2], ".features"))
-    write.table(features_common, f_common)
-    write.table(features_all, f_all)
-    info(paste0("Features saved: ", f_all))
-    info(paste0("Features saved: ", f_common))
-  }
-  ## return features in list
-  return(list(features_all, features_common))
+    info("Extracting features")
+    
+    ## define genes
+    genes <- rownames(counts_nm)
+    if (is.null(genes) | length(genes) == 0) {
+        info("Please annotate your expression matrix with genes identifiers as rownames")
+        return(NULL)
+    }
+    
+    #GENERATE ALL FEATURES       
+    features_all <- feature_generation(counts_nm, read_metrics, GO_terms, 
+                                       extra_genes, organism)
+    info(paste0("Features extracted."))
+    sds <- apply(features_all, 2, sd)
+    #REMOVE 0-VARIANCE VALUE FEATURES
+    features_all <- features_all[,sds != 0]
+    types <- c("all", "common")
+    ## define common features
+    features_common <- features_all[, which(colnames(features_all) %in% 
+                                                common_features)]
+    ## write features to file if required
+    if (prefix != "" && output_dir != "") {
+        ## define output directory and create if needed
+        o <- paste(output_dir, prefix, sep = "/")
+        print(output_dir)
+        dir.create(o, showWarnings = TRUE, recursive = TRUE)
+        
+        ## NB may be better to use file.path() for defining output files
+        f_all <- file.path(o, paste0(prefix, ".", types[1], ".features"))
+        f_common <- file.path(o, paste0(prefix, ".", types[2], ".features"))
+        write.table(features_common, f_common)
+        write.table(features_all, f_all)
+        info(paste0("Features saved: ", f_all))
+        info(paste0("Features saved: ", f_common))
+    }
+    ## return features in list
+    return(list(features_all, features_common))
 }
 
 ################################################################################
@@ -86,6 +93,7 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 #' 
 #' @importFrom AnnotationDbi Term
 #' @importFrom topGO annFUN.org
+#' @importFrom graphics hist par
 #' 
 #' @return Returns the entire set of features in a data.frame
 #' 
@@ -94,7 +102,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   ## initialise features list  
   features <- list()
   
-  read_metrics=data.frame(read_metrics)
+  read_metrics <- data.frame(read_metrics)
   #REMOVE ALL 0 GENES
   counts_nm <- data.frame(counts_nm)
   genes_mean <- rowMeans(counts_nm)
@@ -113,7 +121,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   ########################################
   
   ## only consider reads mapped to genes (excluding ERCCs)
-  ercc_counts = read_metrics$ercc
+  ercc_counts <- read_metrics$ercc
   if ( is.null(ercc_counts) ) {
     ercc_counts <- 0
   }
@@ -139,10 +147,12 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
                genes_means_log > quantile(genes_means_log)[4])
   counts_nm_mean_log_high_var_mean <- counts_nm_mean_log[i,]
   
-  transcriptome_variance = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  number_of_highly_expressed_variable_genes = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  num_of_high_var_exp_genes_interval = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  if(length(i) > 100) {
+  transcriptome_variance <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+  number_of_highly_expressed_variable_genes <- matrix(
+      0, ncol(counts_nm_mean_log_high_var_mean))
+  num_of_high_var_exp_genes_interval <- matrix(
+      0, ncol(counts_nm_mean_log_high_var_mean))
+  if (length(i) > 100) {
     
     #VARIANCE ACROSS HIGHLY EXPRESSED GENES
     transcriptome_variance <- apply(counts_nm_mean_log_high_var_mean, 2, var)
@@ -167,14 +177,14 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   }
   
   
-  mean_ex=apply(counts_nm, 1, mean)
-  i=order(mean_ex, decreasing = TRUE)
-  mean_ex=mean_ex[i]
-  lowl_expr=mean_ex[1:(length(mean_ex)*0.01)]
+  mean_ex <- apply(counts_nm, 1, mean)
+  i <- order(mean_ex, decreasing = TRUE)
+  mean_ex <- mean_ex[i]
+  lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
   
   #ONLY LOWLY EXPRESSED
-  l_i=which(rownames(counts_nm) %in% names(lowl_expr))
-  cell_to_mean_corr_spearman_low_ex = matrix(0, ncol(counts_nm))
+  l_i <- which(rownames(counts_nm) %in% names(lowl_expr))
+  cell_to_mean_corr_spearman_low_ex  <-  matrix(0, ncol(counts_nm))
   if (length(l_i) > 100) {
     cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
                                              method = "spearman")
@@ -331,7 +341,9 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 #' @param alpha alpha
 #' @importFrom robustbase covMcd
 #' @importFrom mvoutlier arw
-uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
+#' @importFrom stats cor formula mahalanobis prcomp predict qchisq quantile sd t.test var
+#' 
+uni.plot <- function(x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
   if (!is.matrix(x) && !is.data.frame(x)) 
     stop("x must be matrix or data.frame")
   if (ncol(x) < 2) 
@@ -402,15 +414,15 @@ assess_cell_quality_PCA <- function(features, file="") {
   dimens <- min(10, ncol(features))
   low_qual_i <- which(pcout_c$wfinal01 == 0)
   uni_2 <- (uni.plot(pca$x[, 1:2]))
-  low_qual_i = which(uni_2$outliers == TRUE)
+  low_qual_i <- which(uni_2$outliers == TRUE)
   
-  mtdna_i=grep("mtDNA", colnames(features))
+  mtdna_i<-grep("mtDNA", colnames(features))
   if(length(mtdna_i) > 0) {
     mtdna <- t.test(features[,mtdna_i][low_qual_i], 
                     features[,mtdna_i][-low_qual_i], 
                     alternative = "greater")$p.value
   } 
-  mapped_prop_i=grep("Mapped", colnames(features))
+  mapped_prop_i <- grep("Mapped", colnames(features))
   
   if(length(grep("Mapped", colnames(features))) > 0) {
     
@@ -426,17 +438,17 @@ assess_cell_quality_PCA <- function(features, file="") {
     
   } else{
     types <- rep(1, nrow(features))
-    types[low_qual_i] = 0
+    types[low_qual_i] <- 0
   }
   
   annot <- data.frame(cell = rownames(features), quality = types)
   
   
   #PLOT PCA + MOST INFORMATIVE FEATURES
-  if(file != "") {
+  if (file != "") {
     ## define data frame with cell types
     col <- c("0" = "red","1" = "darkgreen")
-    plot_pca(features, as.character(types), pca, col, output_file=file)
+    plot_pca(features, as.character(types), pca, col, output_file = file)
   }
   return(annot)
 }
@@ -457,15 +469,17 @@ assess_cell_quality_PCA <- function(features, file="") {
 #' @return Plots of PCA
 #' 
 #' @import ggplot2 
+#' @importFrom grDevices dev.off pdf rainbow
+#' @importFrom grid unit
 #' 
-plot_pca=function(features, annot, pca, col, output_file){
+plot_pca <- function(features, annot, pca, col, output_file){
   
-  feature_names = colnames(features)
+  feature_names <- colnames(features)
   ## define data frame 
   data_frame <- data.frame(type = as.character(annot), pca$x)  
   ## plot PC1 vs PC2
-  plot <- ggplot2::ggplot(data_frame, ggplot2::aes(x = PC1, y = PC2)) + 
-    ggplot2::geom_point(ggplot2::aes(colour = type)) + 
+  plot <- ggplot2::ggplot(data_frame, ggplot2::aes_string(x = "PC1", y = "PC2")) + 
+    ggplot2::geom_point(ggplot2::aes_string(colour = "type")) + 
     ggplot2::scale_colour_manual(values = col) +
     ggplot2::theme_bw()  + 
     ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(), 
@@ -491,8 +505,9 @@ plot_pca=function(features, annot, pca, col, output_file){
   plotsPC1 <- sapply(top_features_pc1_i, function(f) {
     feature <- features[,f]
     df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes(x = type)) + 
-      ggplot2::geom_boxplot(ggplot2::aes(colour = factor(type), y = counts),
+    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                y = "counts"),
                             alpha = 0.3, size = size, 
                             outlier.size = 0) +
       ggplot2::ggtitle(feature_names[f]) + 
@@ -521,8 +536,9 @@ plot_pca=function(features, annot, pca, col, output_file){
   plotPC2 <- sapply(top_features_pc2_i, function(f) {
     feature <- features[,f]
     df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes(x = type)) + 
-      ggplot2::geom_boxplot(ggplot2::aes(colour = factor(type), y = counts), 
+    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                y = "counts"), 
                             alpha = 0.3,  size = size, 
                             outlier.size = 0) +
       ggplot2::ggtitle(feature_names[f]) + 
@@ -581,7 +597,7 @@ multiplot <- function(..., plotlist = NULL, file, cols = 6, layout = NULL) {
   # Make a list from the ... arguments and plotlist
   plots <- c(list(...), plotlist)
   
-  numPlots = length(plots)
+  numPlots <- length(plots)
   
   # If layout is NULL, then use 'cols' to determine layout
   if (is.null(layout)) {
