@@ -1,4 +1,4 @@
-#Code reviewed and edited by Davis McCarthy, December 2015
+# Major functionality for the package
 
 #' Extracts biological and technical features for given dataset
 #' 
@@ -22,22 +22,24 @@
 #' @return a list with two elements, one providing all features, and one 
 #' providing common features.
 #' 
+#' @importFrom utils data write.table
+#' 
 #' @export
 #' 
 extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="", 
                              common_features=NULL, GO_terms=NULL, extra_genes=NULL, organism="mouse") {
   
-  data(feature_info)
-  if(is.null(common_features)) {
-    common_features=feature_info[[3]]
+  data("feature_info")
+  if (is.null(common_features)) {
+    common_features <- feature_info[[3]]
   }
   
-  if(is.null(GO_terms)) {
-    GO_terms=feature_info[[1]]
+  if (is.null(GO_terms)) {
+    GO_terms <- feature_info[[1]]
   }
   
-  if(is.null(extra_genes)) {
-    extra_genes=feature_info[[2]]
+  if (is.null(extra_genes)) {
+    extra_genes <- feature_info[[2]]
   }
   
   info("Extracting features")
@@ -68,8 +70,8 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
     dir.create(o, showWarnings = TRUE, recursive = TRUE)
     
     ## NB may be better to use file.path() for defining output files
-    f_all = file.path(o, paste0(prefix, ".", types[1], ".features"))
-    f_common = file.path(o, paste0(prefix, ".", types[2], ".features"))
+    f_all <- file.path(o, paste0(prefix, ".", types[1], ".features"))
+    f_common <- file.path(o, paste0(prefix, ".", types[2], ".features"))
     write.table(features_common, f_common)
     write.table(features_all, f_all)
     info(paste0("Features saved: ", f_all))
@@ -159,22 +161,22 @@ assess_cell_quality_PCA <- function(features, file="") {
   dimens <- min(10, ncol(features))
   low_qual_i <- which(pcout_c$wfinal01 == 0)
   uni_2 <- (uni.plot(pca$x[, 1:2]))
-  low_qual_i = which(uni_2$outliers == TRUE)
+  low_qual_i <- which(uni_2$outliers == TRUE)
   
   #DETERMINE WHICH OF TWO POPULATIONS ARE OUTLIERS.
   #RELY ON THAT IF MTDNA HIGH OR MAPPED PROP LOW, IT IS LOW QUALITY 
   #IF NOT AVAILABLE, ASSUME THAT CLUSTER WITH SMALLER NUMBER OF CELLS LOW QUALITY
-  mtdna = NA
-  mtdna_i=grep("mtDNA", colnames(features))
+  mtdna <- NA
+  mtdna_i <- grep("mtDNA", colnames(features))
   if(length(mtdna_i) > 0) {
     mtdna <- t.test(features[,mtdna_i][low_qual_i], 
                     features[,mtdna_i][-low_qual_i], 
                     alternative = "greater")$p.value
   } 
-  mapped_prop_i=grep("Mapped", colnames(features))
+  mapped_prop_i <- grep("Mapped", colnames(features))
   
   
-  mapped_prop = NA
+  mapped_prop <- NA
   if(length(grep("Mapped", colnames(features))) > 0) {
     
     mapped_prop <- t.test(features[,mapped_prop_i][low_qual_i], 
@@ -187,25 +189,25 @@ assess_cell_quality_PCA <- function(features, file="") {
     if (mapped_prop > 0.5 && mtdna > 0.5) {
       types[-low_qual_i] <- 0
     } else{
-      types[low_qual_i] = 0
+      types[low_qual_i] <- 0
     }
   } else {
-    popul_1 = length(low_qual_i) 
-    popul_2 = nrow(features) - length(low_qual_i)
+    popul_1 <- length(low_qual_i) 
+    popul_2 <- nrow(features) - length(low_qual_i)
     if (popul_1 <  popul_2) {
-      types[low_qual_i] = 0
+      types[low_qual_i] <- 0
     } else {
-      types[-low_qual_i] = 0
+      types[-low_qual_i] <- 0
     }
   }
   annot <- data.frame(cell = rownames(features), quality = types)
   
   
   #PLOT PCA + MOST INFORMATIVE FEATURES
-  if(file != "") {
+  if (file != "") {
     ## define data frame with cell types
     col <- c("0" = "red","1" = "darkgreen")
-    plot_pca(features, as.character(types), pca, col, output_file=file)
+    plot_pca(features, as.character(types), pca, col, output_file = file)
   }
   return(annot)
 }
@@ -241,6 +243,10 @@ normalise_by_factor <- function(counts, norm_factor) {
 #' 
 #' @importFrom AnnotationDbi Term
 #' @importFrom topGO annFUN.org
+#' @importFrom graphics hist par
+#' @import org.Mm.eg.db
+#' @import org.Hs.eg.db
+#' @importFrom stats cor formula mahalanobis prcomp predict qchisq quantile sd t.test var
 #' 
 #' @return Returns the entire set of features in a data.frame
 #' 
@@ -249,7 +255,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   ## initialise features list  
   features <- list()
   
-  read_metrics=data.frame(read_metrics)
+  read_metrics <- data.frame(read_metrics)
   #REMOVE ALL 0 GENES
   counts_nm <- data.frame(counts_nm)
   genes_mean <- rowMeans(counts_nm)
@@ -262,7 +268,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   ########################################
   
   ## only consider reads mapped to genes (excluding ERCCs)
-  ercc_counts = read_metrics$ercc
+  ercc_counts <- read_metrics$ercc
   if ( is.null(ercc_counts) ) {
     ercc_counts <- 0
   }
@@ -288,9 +294,9 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
                genes_means_log > quantile(genes_means_log)[4])
   counts_nm_mean_log_high_var_mean <- counts_nm_mean_log[i,]
   
-  transcriptome_variance = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  number_of_highly_expressed_variable_genes = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  num_of_high_var_exp_genes_interval = matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+  transcriptome_variance <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+  number_of_highly_expressed_variable_genes <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+  num_of_high_var_exp_genes_interval <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
   if(length(i) > 100) {
     
     #VARIANCE ACROSS HIGHLY EXPRESSED GENES
@@ -316,13 +322,13 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   }
   
   
-  mean_ex=apply(counts_nm, 1, mean)
-  i=order(mean_ex, decreasing = TRUE)
-  mean_ex=mean_ex[i]
-  lowl_expr=mean_ex[1:(length(mean_ex)*0.01)]
+  mean_ex <- apply(counts_nm, 1, mean)
+  i <- order(mean_ex, decreasing = TRUE)
+  mean_ex <- mean_ex[i]
+  lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
   
   #ONLY LOWLY EXPRESSED
-  l_i=which(rownames(counts_nm) %in% names(lowl_expr))
+  l_i <- which(rownames(counts_nm) %in% names(lowl_expr))
   cell_to_mean_corr_spearman_low_ex = matrix(0, ncol(counts_nm))
   if (length(l_i) > 100) {
     cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
@@ -368,12 +374,12 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   colnames(go_prop) <- go_names 
   
   #CYTOPLASM AND MEMBRANE PRESENT IN GO TERMS
-  m_i=which(GO_terms[,1]  == "GO:0016020")
-  c_i=which(GO_terms[,1]  ==  "GO:0005737")
+  m_i <- which(GO_terms[,1]  == "GO:0016020")
+  c_i <- which(GO_terms[,1]  ==  "GO:0005737")
   
-  volume_surface_ratio = matrix(0, ncol(counts_nm))
+  volume_surface_ratio <- matrix(0, ncol(counts_nm))
   if (length(m_i) > 0 && length(c_i) > 0 && sum(go_prop[, c_i]) > 0) {
-    volume_surface_ratio=go_prop[, m_i]/go_prop[, c_i]
+    volume_surface_ratio <- go_prop[, m_i]/go_prop[, c_i]
   }
   
   #PROPORTION OF MAPPED READS MAPPED TO SPECIFIC GENES
@@ -434,7 +440,10 @@ simple_cap <- function(x) {
 #' @param alpha alpha
 #' @importFrom robustbase covMcd
 #' @importFrom mvoutlier arw
-uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
+#' @importFrom grDevices dev.off pdf rainbow
+#' @import grid
+#' 
+uni.plot <- function(x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
   if (!is.matrix(x) && !is.data.frame(x)) 
     stop("x must be matrix or data.frame")
   if (ncol(x) < 2) 
@@ -468,9 +477,10 @@ uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
     lcex <- c(1.5, 1, 0.5, 1, 1.5)
     lalpha <- length(alpha)
     xs <- scale(x) - min(scale(x))
-    eucl <- sqrt(apply(xs^2, 1, sum))
-    rbcol <- rev(rainbow(nrow(x), start = 0, end = 0.7))[as.integer(cut(eucl, 
-                                                                        nrow(x), labels = 1:nrow(x)))]
+    eucl <- sqrt(apply(xs ^ 2, 1, sum))
+    rbcol <- rev(rainbow(nrow(x), 
+                         start = 0, end = 0.7))[
+                             as.integer(cut(eucl, nrow(x), labels = 1:nrow(x)))]
     
     o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
                                                       dim(x)[2]))))
@@ -497,14 +507,14 @@ uni.plot=function (x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
 #' 
 #' @import ggplot2 
 #' 
-plot_pca=function(features, annot, pca, col, output_file){
+plot_pca <- function(features, annot, pca, col, output_file){
   
-  feature_names = colnames(features)
+  feature_names <- colnames(features)
   ## define data frame 
   data_frame <- data.frame(type = as.character(annot), pca$x)  
   ## plot PC1 vs PC2
-  plot <- ggplot2::ggplot(data_frame, ggplot2::aes(x = PC1, y = PC2)) + 
-    ggplot2::geom_point(ggplot2::aes(colour = type)) + 
+  plot <- ggplot2::ggplot(data_frame, ggplot2::aes_string(x = "PC1", y = "PC2")) + 
+    ggplot2::geom_point(ggplot2::aes_string(colour = "type")) + 
     ggplot2::scale_colour_manual(values = col) +
     ggplot2::theme_bw()  + 
     ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(), 
@@ -530,25 +540,28 @@ plot_pca=function(features, annot, pca, col, output_file){
   plotsPC1 <- sapply(top_features_pc1_i, function(f) {
     feature <- features[,f]
     df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes(x = type)) + 
-      ggplot2::geom_boxplot(ggplot2::aes(colour = factor(type), y = counts),
+    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                y = "counts"),
                             alpha = 0.3, size = size, 
                             outlier.size = 0) +
-      ggplot2::ggtitle(feature_names[f]) + 
-      ggplot2::theme_bw() + 
-      ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_blank(), 
-                     axis.text.y = ggplot2::element_text(size = text_size),
-                     axis.ticks.length = grid::unit(0, "mm"), 
-                     axis.title.x = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank(),
-                     legend.position = "none",
-                     plot.title = ggplot2::element_text(size = text_size),
-                     panel.background = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(
-                       fill = NA, color = "black", size = border_size, 
-                       linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
-                     panel.grid.minor = ggplot2::element_blank(),
-                     plot.background = ggplot2::element_blank()) + 
-      ggplot2::scale_color_manual(values = col)
+        ggplot2::ggtitle(feature_names[f]) + 
+        ggplot2::theme_bw() + 
+        ggplot2::theme(axis.line = ggplot2::element_blank(), 
+                       axis.text.x = ggplot2::element_blank(), 
+                       axis.text.y = ggplot2::element_text(size = text_size),
+                       axis.ticks.length = grid::unit(0, "mm"), 
+                       axis.title.x = ggplot2::element_blank(), 
+                       axis.title.y = ggplot2::element_blank(),
+                       legend.position = "none",
+                       plot.title = ggplot2::element_text(size = text_size),
+                       panel.background = ggplot2::element_blank(),
+                       panel.border = ggplot2::element_rect(
+                           fill = NA, color = "black", size = border_size, 
+                           linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
+                       panel.grid.minor = ggplot2::element_blank(),
+                       plot.background = ggplot2::element_blank()) + 
+        ggplot2::scale_color_manual(values = col)
     return(plot)
   }, simplify = FALSE)
   
@@ -560,13 +573,15 @@ plot_pca=function(features, annot, pca, col, output_file){
   plotPC2 <- sapply(top_features_pc2_i, function(f) {
     feature <- features[,f]
     df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes(x = type)) + 
-      ggplot2::geom_boxplot(ggplot2::aes(colour = factor(type), y = counts), 
+    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                y = "counts"), 
                             alpha = 0.3,  size = size, 
                             outlier.size = 0) +
       ggplot2::ggtitle(feature_names[f]) + 
       ggplot2::theme_bw() + 
-      ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_blank(),
+      ggplot2::theme(axis.line = ggplot2::element_blank(), 
+                     axis.text.x = ggplot2::element_blank(),
                      axis.text.y = ggplot2::element_text(size = text_size),
                      axis.ticks.length = grid::unit(0, "mm"),
                      axis.title.x = ggplot2::element_blank(),
@@ -574,13 +589,14 @@ plot_pca=function(features, annot, pca, col, output_file){
                      legend.position = "none",
                      panel.background = ggplot2::element_blank(),
                      plot.title = ggplot2::element_text(size = text_size),
-                     panel.border = ggplot2::element_rect(fill = NA, color = "black", 
+                     panel.border = ggplot2::element_rect(fill = NA, 
+                                                          color = "black", 
                                                           size = border_size, 
                                                           linetype = "solid"),
                      panel.grid.major = ggplot2::element_blank(),
                      panel.grid.minor = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank()) + 
-      ggplot2::scale_color_manual(values = col)
+        ggplot2::scale_color_manual(values = col)
     return(plot)
   }, simplify = FALSE)
   
@@ -620,7 +636,7 @@ multiplot <- function(..., plotlist = NULL, file, cols = 6, layout = NULL) {
   # Make a list from the ... arguments and plotlist
   plots <- c(list(...), plotlist)
   
-  numPlots = length(plots)
+  numPlots <- length(plots)
   
   # If layout is NULL, then use 'cols' to determine layout
   if (is.null(layout)) {
