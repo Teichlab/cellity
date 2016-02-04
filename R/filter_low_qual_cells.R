@@ -31,17 +31,33 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
   
   data("feature_info")
   if (is.null(common_features)) {
-    common_features <- feature_info[[3]]
+    common_features <- feature_info[[2]]
   }
   
   if (is.null(GO_terms)) {
     GO_terms <- feature_info[[1]]
   }
   
-  if (is.null(extra_genes)) {
-    extra_genes <- feature_info[[2]]
+  if ( organism == "human" ||  organism == "org.Hs.eg.db") {
+    organism <-"org.Hs.eg.db"
+  } else if( organism == "mouse" || organism == "org.Mm.eg.db") {
+    organism <-"org.Mm.eg.db"
+  } else{
+    print.warnings ("You have specified a different organism than mouse or human.\n
+           This might work, but you have to make sure you have specified the appropiate database as organism (e.g. org.Hs.eg.db), and you have it also installed.\n 
+           Also, pleae note that extra_genes need to math the organism of interest.")
   }
   
+  if (is.null(extra_genes)) {
+    if ( organism == "org.Hs.eg.db" ) {
+      data("extra_human_genes")
+      extra_genes = extra_human_genes
+    } else if( organism == "org.Mm.eg.db" ) {
+      data("extra_mouse_genes")
+      extra_genes = extra_mouse_genes
+    }
+  }
+
   info("Extracting features")
   
   ## define genes
@@ -349,17 +365,11 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
   ####BIOLOGICAL FEATURES##################
   ########################################
   
-  #ASSUME IT IS MOUSE
-  GO_BP <- topGO::annFUN.org("BP", mapping = "org.Mm.eg.db", ID = "ensembl")
-  GO_CC <- topGO::annFUN.org("CC", mapping = "org.Mm.eg.db", ID = "ensembl")
   
-  if ( organism == "human" ) {
-    
-    GO_BP <- topGO::annFUN.org("BP", mapping = "org.Hs.eg.db", 
-                               ID = "ensembl")  
-    GO_CC <- topGO::annFUN.org("CC", mapping = "org.Hs.eg.db", 
-                               ID = "ensembl")
-  }
+  #ASSUME IT IS MOUSE
+  GO_BP <- topGO::annFUN.org("BP", mapping = organism, ID = "ensembl")
+  GO_CC <- topGO::annFUN.org("CC", mapping = organism, ID = "ensembl")
+  
   
   GO <- c(GO_BP, GO_CC)
   
@@ -480,7 +490,7 @@ uni.plot <- function(x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
     eucl <- sqrt(apply(xs ^ 2, 1, sum))
     rbcol <- rev(rainbow(nrow(x), 
                          start = 0, end = 0.7))[
-                             as.integer(cut(eucl, nrow(x), labels = 1:nrow(x)))]
+                           as.integer(cut(eucl, nrow(x), labels = 1:nrow(x)))]
     
     o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
                                                       dim(x)[2]))))
@@ -545,23 +555,23 @@ plot_pca <- function(features, annot, pca, col, output_file){
                                                 y = "counts"),
                             alpha = 0.3, size = size, 
                             outlier.size = 0) +
-        ggplot2::ggtitle(feature_names[f]) + 
-        ggplot2::theme_bw() + 
-        ggplot2::theme(axis.line = ggplot2::element_blank(), 
-                       axis.text.x = ggplot2::element_blank(), 
-                       axis.text.y = ggplot2::element_text(size = text_size),
-                       axis.ticks.length = grid::unit(0, "mm"), 
-                       axis.title.x = ggplot2::element_blank(), 
-                       axis.title.y = ggplot2::element_blank(),
-                       legend.position = "none",
-                       plot.title = ggplot2::element_text(size = text_size),
-                       panel.background = ggplot2::element_blank(),
-                       panel.border = ggplot2::element_rect(
-                           fill = NA, color = "black", size = border_size, 
-                           linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
-                       panel.grid.minor = ggplot2::element_blank(),
-                       plot.background = ggplot2::element_blank()) + 
-        ggplot2::scale_color_manual(values = col)
+      ggplot2::ggtitle(feature_names[f]) + 
+      ggplot2::theme_bw() + 
+      ggplot2::theme(axis.line = ggplot2::element_blank(), 
+                     axis.text.x = ggplot2::element_blank(), 
+                     axis.text.y = ggplot2::element_text(size = text_size),
+                     axis.ticks.length = grid::unit(0, "mm"), 
+                     axis.title.x = ggplot2::element_blank(), 
+                     axis.title.y = ggplot2::element_blank(),
+                     legend.position = "none",
+                     plot.title = ggplot2::element_text(size = text_size),
+                     panel.background = ggplot2::element_blank(),
+                     panel.border = ggplot2::element_rect(
+                       fill = NA, color = "black", size = border_size, 
+                       linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
+                     panel.grid.minor = ggplot2::element_blank(),
+                     plot.background = ggplot2::element_blank()) + 
+      ggplot2::scale_color_manual(values = col)
     return(plot)
   }, simplify = FALSE)
   
@@ -596,7 +606,7 @@ plot_pca <- function(features, annot, pca, col, output_file){
                      panel.grid.major = ggplot2::element_blank(),
                      panel.grid.minor = ggplot2::element_blank(),
                      plot.background = ggplot2::element_blank()) + 
-        ggplot2::scale_color_manual(values = col)
+      ggplot2::scale_color_manual(values = col)
     return(plot)
   }, simplify = FALSE)
   

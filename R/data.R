@@ -5,10 +5,33 @@
 #' @return NULL, but makes available a list with  metadata
 #' @docType data
 #' @usage feature_info
-#' @format a list with 3 elements (GO_terms,extra_genes,common_features).
+#' @format a list with 2 elements (GO_terms,common_features).
 #' @source Wellcome Trust Sanger Institute
 #' @author Tomislav Ilicic & Davis McCarthy, 2015-03-05
 NULL
+
+#' @name extra_human_genes
+#' @title Additional human genes that are used in feature extraction
+#' @description This list contains human genes that are used for feature extraction of biological features
+#' @return NULL, but makes available a list with  metadata
+#' @docType data
+#' @usage extra_human_genes
+#' @format a list containing vectors of genes. Name indicates which GO category.
+#' @source Wellcome Trust Sanger Institute
+#' @author Tomislav Ilicic & Davis McCarthy, 2015-03-05
+NULL
+
+#' @name extra_mouse_genes
+#' @title Additional mouse genes that are used in feature extraction
+#' @description This list contains mouse genes that are used for feature extraction of biological features
+#' @return NULL, but makes available a list with  metadata
+#' @docType data
+#' @usage extra_mouse_genes
+#' @format a list containing vectors of genes. Name indicates which GO category.
+#' @source Wellcome Trust Sanger Institute
+#' @author Tomislav Ilicic & Davis McCarthy, 2015-03-05
+NULL
+
 
 #' @name mES1_features
 #' @title Real test dataset containing all and common features from the paper (mES1)
