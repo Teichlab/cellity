@@ -19,6 +19,8 @@ Imports:
     grDevices,
     grid,
     mvoutlier,
+    org.Hs.eg.db,
+    org.Mm.eg.db,
     robustbase,
     stats,
     topGO,

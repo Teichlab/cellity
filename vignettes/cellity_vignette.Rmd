@@ -5,7 +5,7 @@ date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{An introduction to the cellity package}
-  %\VignetteEngine{rmarkdown::render}
+  %\VignetteEngine{knitr::rmarkdown}
   \usepackage[utf8]{inputenc}
 ---
 
@@ -74,7 +74,7 @@ The former counts (HTSEQ) will be normalised by the number of total reads/librar
 Let us normalise both, the training and test sample data. 
 
 ```{r, eval=TRUE, message=FALSE, warning=FALSE, results='hide', error=FALSE}
-sample_counts_nm = normalise_by_factor(sample_counts, colSums(sample_counts))
+sample_counts_nm <- normalise_by_factor(sample_counts, colSums(sample_counts))
 ```
 
 Once the data has been normalised (library size or TPM) the next step is to extract features. 
@@ -84,7 +84,7 @@ As this function extracts not only biological, but also technical features, we n
 Let us now extract features from both the training and the test data.
 
 ```{r, eval=TRUE, message=FALSE, warning=FALSE, results='hide', error=FALSE}
-sample_features = extract_features(sample_counts_nm, sample_stats)
+sample_features <- extract_features(sample_counts_nm, sample_stats)
 ```
 
 This will generate a list with two elements. Each entry in the list is a matrix (cells x features).
@@ -95,10 +95,12 @@ The function `extract_features` supports only human and mouse data at the moment
 
 ```{r, eval=FALSE}
 data("feature_info")
-common_features=feature_info[[3]]
-GO_terms=feature_info[[1]]
-extra_genes=feature_info[[2]]
-features_human = extract_features(sample_counts_nm, sample_stats, common_features = common_features, GO_terms = GO_terms, extra_genes = extra_genes, organism = "human")
+common_features <- feature_info[[3]]
+GO_terms <- feature_info[[1]]
+extra_genes <- feature_info[[2]]
+features_human <- extract_features(
+    sample_counts_nm, sample_stats, common_features = common_features, 
+    GO_terms = GO_terms, extra_genes = extra_genes, organism = "human")
 ```
 
 If some features are not present in the matrix, it means that all of them have the same value (e.g. ERCC are all 0 if no ERCC present in the data).
@@ -114,8 +116,8 @@ To do so, we have two possibilities:
 Let us test the PCA-feature based version first, by using all features:
 
 ```{r, eval=TRUE}
-sample_features_all=sample_features[[1]]
-sample_qual_pca=assess_cell_quality_PCA(sample_features_all)
+sample_features_all <- sample_features[[1]]
+sample_qual_pca <- assess_cell_quality_PCA(sample_features_all)
 ```
 
 The function `assess_cell_quality_PCA` performs PCA on the features and detects outliers applying `uni.plot` in the [`mvoutlier`](https://cran.r-project.org/web/packages/mvoutlier/mvoutlier.pdf) package on the first two dimensions (PC1 and PC2). It returns a two-dimensional matrix with the name of each sample and indication whether the cell is low (0) or high (1) quality.
@@ -128,8 +130,9 @@ See an example below showing PCA of the original training data (all 960 mES cell
 
 ```{r, eval=TRUE}
 data(training_mES_features)
-training_mES_features_all=training_mES_features[[1]]
-training_quality_PCA_allF=assess_cell_quality_PCA(training_mES_features_all, file="~/training_quality_PCA_allF.pdf")
+training_mES_features_all <- training_mES_features[[1]]
+training_quality_PCA_allF <- assess_cell_quality_PCA(
+    training_mES_features_all, file = "~/training_quality_PCA_allF.pdf")
 ```
 
 As you can see, most cells are green and scattered together, whereas the red cells are outliers. The informative features on the side and bottom tell us that the proportion of intergenic reads are much higher for red cells and correlation of to the mean expression of is lower, compared to green (high quality) cells. This suggests that these red cells are indeed low quality. 
@@ -152,15 +155,16 @@ Note: Multiples will usually show a stronger correlation to the mean, if the pop
 
 Calling the same function using only common features will result in the plot below (using the full original dataset):
 ```{r, eval=TRUE}
-training_mES_features_common=training_mES_features[[2]]
-training_quality_PCA_commonF=assess_cell_quality_PCA(training_mES_features_common, file="~/training_quality_PCA_commonF.pdf")
+training_mES_features_common <- training_mES_features[[2]]
+training_quality_PCA_commonF <- assess_cell_quality_PCA(
+    training_mES_features_common, file = "~/training_quality_PCA_commonF.pdf")
 ```
 Since we do not use all features, our top features are related mostly to mitochondria and cytoplasm (please refer to the paper why that is).
 Let us check the accuracy again by comparing to the original labels:
 ```{r, eval=TRUE, , warning=FALSE, message=FALSE}
 if (requireNamespace("caret", quietly = TRUE)) {
-  pred <- factor(training_quality_PCA_commonF[,2], levels = rev(lvs))
-  confusionMatrix(pred, truth)
+    pred <- factor(training_quality_PCA_commonF[,2], levels = rev(lvs))
+    confusionMatrix(pred, truth)
 }
 ```
 
@@ -183,8 +187,10 @@ This provides us with the full training mES and test set. Now let us use SVM to 
 
 ```{r, eval=TRUE}
 data(param_mES_all)
-mES1_features_all=mES1_features[[1]]
-mES1_quality_SVM=assess_cell_quality_SVM(training_mES_features_all, training_mES_labels[,2], param_mES_all, mES1_features_all)
+mES1_features_all <- mES1_features[[1]]
+mES1_quality_SVM <- assess_cell_quality_SVM(
+    training_mES_features_all, training_mES_labels[,2], param_mES_all, 
+    mES1_features_all)
 ```
 
 The function `assess_cell_quality_SVM` will perform SVM using an ensemble of models (predict using different combination of parameters, and then vote) to improve accuracy. It returns, similar to the PCA-based version, a matrix with cell names and their label indicating low (0) and high (1) quality cells.
@@ -208,9 +214,11 @@ Let us consider the previous example by only using common features.
 
 ```{r, eval=TRUE}
 data(param_mES_common)
-training_mES_features_common=training_mES_features[[2]]
-mES1_features_common=mES1_features[[2]]
-mES1_quality_SVM_common=assess_cell_quality_SVM(training_mES_features_common, training_mES_labels[,2], param_mES_common, mES1_features_common)
+training_mES_features_common <- training_mES_features[[2]]
+mES1_features_common <- mES1_features[[2]]
+mES1_quality_SVM_common <- assess_cell_quality_SVM(
+    training_mES_features_common, training_mES_labels[,2], param_mES_common,
+    mES1_features_common)
 ```
 
 When we now compare accuracy to the original labels we can see that it performs worse than before.
@@ -236,7 +244,7 @@ What I would recommend is the hybrid approach, where you (1) perform the PCA app
 Let us compare the accuracy between the PCA-feature based and SVM version using all features on our mES1 test example:
 ```{r, eval=TRUE}
 #PCA QUALITY
-mES1_quality_PCA=assess_cell_quality_PCA(mES1_features_all)
+mES1_quality_PCA<-assess_cell_quality_PCA(mES1_features_all)
 
 if (requireNamespace("caret", quietly = TRUE)) {
   truth <- factor(mES1_labels[,2],levels = rev(lvs))
