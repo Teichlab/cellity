@@ -158,8 +158,8 @@ training_quality_PCA_commonF=assess_cell_quality_PCA(training_mES_features_commo
 Since we do not use all features, our top features are related mostly to mitochondria and cytoplasm (please refer to the paper why that is).
 Let us check the accuracy again by comparing to the original labels:
 ```{r, eval=TRUE, , warning=FALSE, message=FALSE}
-pred <- factor(training_quality_PCA_commonF[,2], levels = rev(lvs))
 if (requireNamespace("caret", quietly = TRUE)) {
+  pred <- factor(training_quality_PCA_commonF[,2], levels = rev(lvs))
   confusionMatrix(pred, truth)
 }
 ```
@@ -191,9 +191,9 @@ The function `assess_cell_quality_SVM` will perform SVM using an ensemble of mod
 
 Let us check the accuracy again by comparing to the original labels:
 ```{r, eval=TRUE}
-truth <- factor(mES1_labels[,2],levels = rev(lvs))
-pred <- factor(mES1_quality_SVM[,2], levels = rev(lvs))
 if (requireNamespace("caret", quietly = TRUE)) {
+  truth <- factor(mES1_labels[,2],levels = rev(lvs))
+  pred <- factor(mES1_quality_SVM[,2], levels = rev(lvs))
   confusionMatrix(pred, truth)
 }
 ```
@@ -215,9 +215,9 @@ mES1_quality_SVM_common=assess_cell_quality_SVM(training_mES_features_common, tr
 
 When we now compare accuracy to the original labels we can see that it performs worse than before.
 ```{r, eval=TRUE}
-truth <- factor(mES1_labels[,2],levels = rev(lvs))
-pred <- factor(mES1_quality_SVM_common[,2], levels = rev(lvs))
 if (requireNamespace("caret", quietly = TRUE)) {
+  truth <- factor(mES1_labels[,2],levels = rev(lvs))
+  pred <- factor(mES1_quality_SVM_common[,2], levels = rev(lvs))
   confusionMatrix(pred, truth)
 }
 ```
@@ -237,10 +237,10 @@ Let us compare the accuracy between the PCA-feature based and SVM version using 
 ```{r, eval=TRUE}
 #PCA QUALITY
 mES1_quality_PCA=assess_cell_quality_PCA(mES1_features_all)
-truth <- factor(mES1_labels[,2],levels = rev(lvs))
-pred <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
 
 if (requireNamespace("caret", quietly = TRUE)) {
+  truth <- factor(mES1_labels[,2],levels = rev(lvs))
+  pred <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
   confusionMatrix(pred, truth)
 }
 ```
