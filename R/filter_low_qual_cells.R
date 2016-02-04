@@ -28,73 +28,71 @@
 #' 
 extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="", 
                              common_features=NULL, GO_terms=NULL, extra_genes=NULL, organism="mouse") {
-  
-  data("feature_info")
-  if (is.null(common_features)) {
-    common_features <- feature_info[[2]]
-  }
-  
-  if (is.null(GO_terms)) {
-    GO_terms <- feature_info[[1]]
-  }
-  
-  if ( organism == "human" ||  organism == "org.Hs.eg.db") {
-    organism <-"org.Hs.eg.db"
-  } else if( organism == "mouse" || organism == "org.Mm.eg.db") {
-    organism <-"org.Mm.eg.db"
-  } else{
-    print.warnings ("You have specified a different organism than mouse or human.\n
-           This might work, but you have to make sure you have specified the appropiate database as organism (e.g. org.Hs.eg.db), and you have it also installed.\n 
-           Also, pleae note that extra_genes need to math the organism of interest.")
-  }
-  
-  if (is.null(extra_genes)) {
-    if ( organism == "org.Hs.eg.db" ) {
-      data("extra_human_genes")
-      extra_genes = extra_human_genes
-    } else if( organism == "org.Mm.eg.db" ) {
-      data("extra_mouse_genes")
-      extra_genes = extra_mouse_genes
-    }
-  }
-
-  info("Extracting features")
-  
-  ## define genes
-  genes <- rownames(counts_nm)
-  if (is.null(genes) | length(genes) == 0) {
-    info("Please annotate your expression matrix with genes identifiers as rownames")
-    return(NULL)
-  }
-  
-  #GENERATE ALL FEATURES       
-  features_all <- feature_generation(counts_nm, read_metrics, GO_terms, 
-                                     extra_genes, organism)
-  info(paste0("Features extracted."))
-  sds <- apply(features_all, 2, sd)
-  #REMOVE 0-VARIANCE VALUE FEATURES
-  features_all <- features_all[,sds != 0]
-  types <- c("all", "common")
-  ## define common features
-  features_common <- features_all[, which(colnames(features_all) %in% 
-                                            common_features)]
-  ## write features to file if required
-  if (prefix != "" && output_dir != "") {
-    ## define output directory and create if needed
-    o <- paste(output_dir, prefix, sep = "/")
-    print(output_dir)
-    dir.create(o, showWarnings = TRUE, recursive = TRUE)
     
-    ## NB may be better to use file.path() for defining output files
-    f_all <- file.path(o, paste0(prefix, ".", types[1], ".features"))
-    f_common <- file.path(o, paste0(prefix, ".", types[2], ".features"))
-    write.table(features_common, f_common)
-    write.table(features_all, f_all)
-    info(paste0("Features saved: ", f_all))
-    info(paste0("Features saved: ", f_common))
-  }
-  ## return features in list
-  return(list(features_all, features_common))
+    feature_info <- get("feature_info")
+    if (is.null(common_features)) {
+        common_features <- feature_info[[2]]
+    }
+    
+    if (is.null(GO_terms)) {
+        GO_terms <- feature_info[[1]]
+    }
+    
+    if ( organism == "human" ||  organism == "org.Hs.eg.db") {
+        organism <- "org.Hs.eg.db"
+    } else if ( organism == "mouse" || organism == "org.Mm.eg.db") {
+        organism <- "org.Mm.eg.db"
+    } else{
+        print.warnings("You have specified a different organism than mouse or human.\n
+           This might work, but you have to make sure you have specified the appropiate database as organism (e.g. org.Hs.eg.db), and you have it also installed.\n 
+           Also, pleae note that extra_genes need to match the organism of interest.")
+    }
+    
+    if (is.null(extra_genes)) {
+        if ( organism == "org.Hs.eg.db" ) {
+            extra_genes <- get("extra_human_genes")
+        } else if ( organism == "org.Mm.eg.db" ) {
+            extra_genes <- get("extra_mouse_genes")
+        }
+    }
+    
+    .info("Extracting features")
+    
+    ## define genes
+    genes <- rownames(counts_nm)
+    if (is.null(genes) | length(genes) == 0) {
+        .info("Please annotate your expression matrix with genes identifiers as rownames")
+        return(NULL)
+    }
+    
+    #GENERATE ALL FEATURES       
+    features_all <- feature_generation(counts_nm, read_metrics, GO_terms, 
+                                       extra_genes, organism)
+    .info(paste0("Features extracted."))
+    sds <- apply(features_all, 2, sd)
+    #REMOVE 0-VARIANCE VALUE FEATURES
+    features_all <- features_all[,sds != 0]
+    types <- c("all", "common")
+    ## define common features
+    features_common <- features_all[, which(colnames(features_all) %in% 
+                                                common_features)]
+    ## write features to file if required
+    if (prefix != "" && output_dir != "") {
+        ## define output directory and create if needed
+        o <- paste(output_dir, prefix, sep = "/")
+        print(output_dir)
+        dir.create(o, showWarnings = TRUE, recursive = TRUE)
+        
+        ## NB may be better to use file.path() for defining output files
+        f_all <- file.path(o, paste0(prefix, ".", types[1], ".features"))
+        f_common <- file.path(o, paste0(prefix, ".", types[2], ".features"))
+        write.table(features_common, f_common)
+        write.table(features_all, f_all)
+        .info(paste0("Features saved: ", f_all))
+        .info(paste0("Features saved: ", f_common))
+    }
+    ## return features in list
+    return(list(features_all, features_common))
 }
 
 ################################################################################
@@ -121,34 +119,34 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 #' 
 assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
                                     ensemble_param, test_set_features) {
-  
-  data_set <- data.frame(l = training_set_labels, 
-                         unlist(as.matrix(training_set_features)))
-  data_set$l <- as.factor(data_set$l)
-  test_data <- data.frame(as.matrix(test_set_features))
-  form <- formula("l ~ .")
-  
-  final_results <- sapply(1:nrow(ensemble_param), function(x) {
-    parameters <- ensemble_param[x,]
-    weights <- table(data_set$l) 
-    weights[1] <- parameters[3]
-    weights[2] <- 1
-    kernel <- "radial"
     
-    model <- e1071::svm(form, data = data_set, gamma = parameters[1], 
-                        cost = parameters[2], kernel = kernel, 
-                        class.weights = weights)
+    data_set <- data.frame(l = training_set_labels, 
+                           unlist(as.matrix(training_set_features)))
+    data_set$l <- as.factor(data_set$l)
+    test_data <- data.frame(as.matrix(test_set_features))
+    form <- formula("l ~ .")
     
-    pred_test <- predict(model, test_data)
-    svm_test <- as.numeric(levels(pred_test))[pred_test]
-    return(svm_test)
-  }, simplify = FALSE)
-  final_results <- do.call(cbind, final_results)
-  
-  #Voting scheme to determine final label
-  final <- vote(final_results)
-  final_df <- data.frame(cell = rownames(test_set_features), quality = final)
-  return(final_df)
+    final_results <- sapply(1:nrow(ensemble_param), function(x) {
+        parameters <- ensemble_param[x,]
+        weights <- table(data_set$l) 
+        weights[1] <- parameters[3]
+        weights[2] <- 1
+        kernel <- "radial"
+        
+        model <- e1071::svm(form, data = data_set, gamma = parameters[1], 
+                            cost = parameters[2], kernel = kernel, 
+                            class.weights = weights)
+        
+        pred_test <- predict(model, test_data)
+        svm_test <- as.numeric(levels(pred_test))[pred_test]
+        return(svm_test)
+    }, simplify = FALSE)
+    final_results <- do.call(cbind, final_results)
+    
+    #Voting scheme to determine final label
+    final <- .vote(final_results)
+    final_df <- data.frame(cell = rownames(test_set_features), quality = final)
+    return(final_df)
 }
 
 
@@ -169,63 +167,63 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 #' @export
 #' 
 assess_cell_quality_PCA <- function(features, file="") {
-  
-  ## perform PCA
-  pca <- prcomp(features, scale = TRUE, center = TRUE)
-  pca_var_explained <- summary(pca)
-  pcout_c <- mvoutlier::pcout(pca$x[, 1:2])
-  dimens <- min(10, ncol(features))
-  low_qual_i <- which(pcout_c$wfinal01 == 0)
-  uni_2 <- (uni.plot(pca$x[, 1:2]))
-  low_qual_i <- which(uni_2$outliers == TRUE)
-  
-  #DETERMINE WHICH OF TWO POPULATIONS ARE OUTLIERS.
-  #RELY ON THAT IF MTDNA HIGH OR MAPPED PROP LOW, IT IS LOW QUALITY 
-  #IF NOT AVAILABLE, ASSUME THAT CLUSTER WITH SMALLER NUMBER OF CELLS LOW QUALITY
-  mtdna <- NA
-  mtdna_i <- grep("mtDNA", colnames(features))
-  if(length(mtdna_i) > 0) {
-    mtdna <- t.test(features[,mtdna_i][low_qual_i], 
-                    features[,mtdna_i][-low_qual_i], 
-                    alternative = "greater")$p.value
-  } 
-  mapped_prop_i <- grep("Mapped", colnames(features))
-  
-  
-  mapped_prop <- NA
-  if(length(grep("Mapped", colnames(features))) > 0) {
     
-    mapped_prop <- t.test(features[,mapped_prop_i][low_qual_i], 
-                          features[,mapped_prop_i][-low_qual_i], 
-                          alternative = "less")$p.value
-  } 
-  types <- rep(1, nrow(features))
-  #Determine which cluster is low and which high quality
-  if (!is.na(mapped_prop) && !is.na(mtdna)) {
-    if (mapped_prop > 0.5 && mtdna > 0.5) {
-      types[-low_qual_i] <- 0
-    } else{
-      types[low_qual_i] <- 0
-    }
-  } else {
-    popul_1 <- length(low_qual_i) 
-    popul_2 <- nrow(features) - length(low_qual_i)
-    if (popul_1 <  popul_2) {
-      types[low_qual_i] <- 0
+    ## perform PCA
+    pca <- prcomp(features, scale = TRUE, center = TRUE)
+    pca_var_explained <- summary(pca)
+    pcout_c <- mvoutlier::pcout(pca$x[, 1:2])
+    dimens <- min(10, ncol(features))
+    low_qual_i <- which(pcout_c$wfinal01 == 0)
+    uni_2 <- (uni.plot(pca$x[, 1:2]))
+    low_qual_i <- which(uni_2$outliers == TRUE)
+    
+    #DETERMINE WHICH OF TWO POPULATIONS ARE OUTLIERS.
+    #RELY ON THAT IF MTDNA HIGH OR MAPPED PROP LOW, IT IS LOW QUALITY 
+    #IF NOT AVAILABLE, ASSUME THAT CLUSTER WITH SMALLER NUMBER OF CELLS LOW QUALITY
+    mtdna <- NA
+    mtdna_i <- grep("mtDNA", colnames(features))
+    if(length(mtdna_i) > 0) {
+        mtdna <- t.test(features[,mtdna_i][low_qual_i], 
+                        features[,mtdna_i][-low_qual_i], 
+                        alternative = "greater")$p.value
+    } 
+    mapped_prop_i <- grep("Mapped", colnames(features))
+    
+    
+    mapped_prop <- NA
+    if(length(grep("Mapped", colnames(features))) > 0) {
+        
+        mapped_prop <- t.test(features[,mapped_prop_i][low_qual_i], 
+                              features[,mapped_prop_i][-low_qual_i], 
+                              alternative = "less")$p.value
+    } 
+    types <- rep(1, nrow(features))
+    #Determine which cluster is low and which high quality
+    if (!is.na(mapped_prop) && !is.na(mtdna)) {
+        if (mapped_prop > 0.5 && mtdna > 0.5) {
+            types[-low_qual_i] <- 0
+        } else{
+            types[low_qual_i] <- 0
+        }
     } else {
-      types[-low_qual_i] <- 0
+        popul_1 <- length(low_qual_i) 
+        popul_2 <- nrow(features) - length(low_qual_i)
+        if (popul_1 <  popul_2) {
+            types[low_qual_i] <- 0
+        } else {
+            types[-low_qual_i] <- 0
+        }
     }
-  }
-  annot <- data.frame(cell = rownames(features), quality = types)
-  
-  
-  #PLOT PCA + MOST INFORMATIVE FEATURES
-  if (file != "") {
-    ## define data frame with cell types
-    col <- c("0" = "red","1" = "darkgreen")
-    plot_pca(features, as.character(types), pca, col, output_file = file)
-  }
-  return(annot)
+    annot <- data.frame(cell = rownames(features), quality = types)
+    
+    
+    #PLOT PCA + MOST INFORMATIVE FEATURES
+    if (file != "") {
+        ## define data frame with cell types
+        col <- c("0" = "red","1" = "darkgreen")
+        plot_pca(features, as.character(types), pca, col, output_file = file)
+    }
+    return(annot)
 }
 
 
@@ -241,7 +239,7 @@ assess_cell_quality_PCA <- function(features, file="") {
 #' @export
 #' 
 normalise_by_factor <- function(counts, norm_factor) { 
-  return(t(t(counts) / norm_factor))
+    return(t(t(counts) / norm_factor))
 }
 
 ################################################################################
@@ -268,147 +266,148 @@ normalise_by_factor <- function(counts, norm_factor) {
 #' 
 feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes, 
                                organism) {
-  ## initialise features list  
-  features <- list()
-  
-  read_metrics <- data.frame(read_metrics)
-  #REMOVE ALL 0 GENES
-  counts_nm <- data.frame(counts_nm)
-  genes_mean <- rowMeans(counts_nm)
-  genes_zero <- which(genes_mean == 0)
-  genes_mean <- genes_mean[-genes_zero]
-  counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
-  
-  ########################################
-  ####TECHINCAL FEATURES##################
-  ########################################
-  
-  ## only consider reads mapped to genes (excluding ERCCs)
-  ercc_counts <- read_metrics$ercc
-  if ( is.null(ercc_counts) ) {
-    ercc_counts <- 0
-  }
-  number_mapped_reads_prop <- ((read_metrics$mapped - ercc_counts) / 
-                                 read_metrics$total)
-  
-  #HOPE THAT THIS WORKS ALSO WHEN REGRESSION NORMALIZATION HAS BEEN APPLIED
-  #AS SOME REGRESSION METHODS ALSO PUSH 0 TO ANOTHER VALUE
-  detected_genes <- apply(counts_nm, 2, function(x) {
-    return(length(which(x > 0)))
-  })
-  
-  counts_nm_mean_log <- log(counts_nm_mean + 0.001)
-  genes_var <- apply(counts_nm_mean_log,1,var)
-  genes_means_log <- log(genes_mean)
-  
-  
-  cell_to_mean_corr_spearman <- cor(counts_nm, rowMeans(counts_nm),
-                                    method = "spearman")
-  
-  #SELECT ONLY HIGHLY VARIABLES GENES WITH STRONG EXPRESSION BASED ON LAST QUANTILE
-  i <- which(genes_var > quantile(genes_var)[4] & 
-               genes_means_log > quantile(genes_means_log)[4])
-  counts_nm_mean_log_high_var_mean <- counts_nm_mean_log[i,]
-  
-  transcriptome_variance <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  number_of_highly_expressed_variable_genes <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  num_of_high_var_exp_genes_interval <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
-  if(length(i) > 100) {
+    ## initialise features list  
+    features <- list()
     
-    #VARIANCE ACROSS HIGHLY EXPRESSED GENES
-    transcriptome_variance <- apply(counts_nm_mean_log_high_var_mean, 2, var)
+    read_metrics <- data.frame(read_metrics)
+    #REMOVE ALL 0 GENES
+    counts_nm <- data.frame(counts_nm)
+    genes_mean <- rowMeans(counts_nm)
+    genes_zero <- which(genes_mean == 0)
+    genes_mean <- genes_mean[-genes_zero]
+    counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
+    
+    ########################################
+    ####TECHINCAL FEATURES##################
+    ########################################
+    
+    ## only consider reads mapped to genes (excluding ERCCs)
+    ercc_counts <- read_metrics$ercc
+    if ( is.null(ercc_counts) ) {
+        ercc_counts <- 0
+    }
+    number_mapped_reads_prop <- ((read_metrics$mapped - ercc_counts) / 
+                                     read_metrics$total)
+    
+    #HOPE THAT THIS WORKS ALSO WHEN REGRESSION NORMALIZATION HAS BEEN APPLIED
+    #AS SOME REGRESSION METHODS ALSO PUSH 0 TO ANOTHER VALUE
+    detected_genes <- apply(counts_nm, 2, function(x) {
+        return(length(which(x > 0)))
+    })
+    
+    counts_nm_mean_log <- log(counts_nm_mean + 0.001)
+    genes_var <- apply(counts_nm_mean_log,1,var)
+    genes_means_log <- log(genes_mean)
     
     
-    #NUMBER OF HIGHLY EXPRESSED GENES
-    m <- quantile(counts_nm_mean[i,2])[4]
-    number_of_highly_expressed_variable_genes <- 
-      apply(counts_nm_mean[i,], 2, function(x) {return(sum(x > m))})
+    cell_to_mean_corr_spearman <- cor(counts_nm, rowMeans(counts_nm),
+                                      method = "spearman")
+    
+    #SELECT ONLY HIGHLY VARIABLES GENES WITH STRONG EXPRESSION BASED ON LAST QUANTILE
+    i <- which(genes_var > quantile(genes_var)[4] & 
+                   genes_means_log > quantile(genes_means_log)[4])
+    counts_nm_mean_log_high_var_mean <- counts_nm_mean_log[i,]
+    
+    transcriptome_variance <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+    number_of_highly_expressed_variable_genes <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+    num_of_high_var_exp_genes_interval <- matrix(0, ncol(counts_nm_mean_log_high_var_mean))
+    if(length(i) > 100) {
+        
+        #VARIANCE ACROSS HIGHLY EXPRESSED GENES
+        transcriptome_variance <- apply(counts_nm_mean_log_high_var_mean, 2, var)
+        
+        
+        #NUMBER OF HIGHLY EXPRESSED GENES
+        m <- quantile(counts_nm_mean[i,2])[4]
+        number_of_highly_expressed_variable_genes <- 
+            apply(counts_nm_mean[i,], 2, function(x) {return(sum(x > m))})
+        
+        
+        #NUMBER OF LOW TO HIGH EXPRESED AND VARIABLE GENES PER INTERVAL
+        num_of_high_var_exp_genes_interval <-
+            apply(counts_nm_mean_log_high_var_mean, 2, function(x) {
+                hst <- hist(x, breaks = c(-100, -4, -2, 0, 2, 100), plot = FALSE)
+                hst$counts
+            })
+        num_of_high_var_exp_genes_interval <- t(num_of_high_var_exp_genes_interval)
+        colnames(num_of_high_var_exp_genes_interval) <- 
+            paste0("num_of_high_var_exp_genes_interval_", 
+                   1:ncol(num_of_high_var_exp_genes_interval))
+    }
     
     
-    #NUMBER OF LOW TO HIGH EXPRESED AND VARIABLE GENES PER INTERVAL
-    num_of_high_var_exp_genes_interval <-
-      apply(counts_nm_mean_log_high_var_mean, 2, function(x) {
-        hst <- hist(x, breaks = c(-100, -4, -2, 0, 2, 100), plot = FALSE)
-        hst$counts
-      })
-    num_of_high_var_exp_genes_interval <- t(num_of_high_var_exp_genes_interval)
-    colnames(num_of_high_var_exp_genes_interval) <- 
-      paste0("num_of_high_var_exp_genes_interval_", 
-             1:ncol(num_of_high_var_exp_genes_interval))
-  }
-  
-  
-  mean_ex <- apply(counts_nm, 1, mean)
-  i <- order(mean_ex, decreasing = TRUE)
-  mean_ex <- mean_ex[i]
-  lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
-  
-  #ONLY LOWLY EXPRESSED
-  l_i <- which(rownames(counts_nm) %in% names(lowl_expr))
-  cell_to_mean_corr_spearman_low_ex = matrix(0, ncol(counts_nm))
-  if (length(l_i) > 100) {
-    cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
-                                             method = "spearman")
-  }
-  techincal_features <- cbind(number_mapped_reads_prop,
-                              read_metrics[, 5:10], detected_genes, cell_to_mean_corr_spearman, cell_to_mean_corr_spearman_low_ex,
-                              transcriptome_variance,
-                              num_of_high_var_exp_genes_interval, 
-                              number_of_highly_expressed_variable_genes)
-  tech_names <- c("Mapped %", "Multi-mapped %", "Intergenic %", "Intragenic %", "Exonic %", "Intronic %", "Ambigious %", 
-                  "#Detected genes",  "Cell-to-mean", "Cell-to-mean lowE", "Transcriptome variance", 
-                  paste0("High expr.var genes intv.", 1:ncol(num_of_high_var_exp_genes_interval)),  "#High exp + var genes")
-  
-  colnames(techincal_features) <- tech_names
-  
-  ########################################
-  ####BIOLOGICAL FEATURES##################
-  ########################################
-  
-  
-  #ASSUME IT IS MOUSE
-  GO_BP <- topGO::annFUN.org("BP", mapping = organism, ID = "ensembl")
-  GO_CC <- topGO::annFUN.org("CC", mapping = organism, ID = "ensembl")
-  
-  
-  GO <- c(GO_BP, GO_CC)
-  
-  #PROPORTION OF MAPPED READS MAPPED TO THE GO TERM
-  go_prop <- sapply(unlist(GO_terms), function(go_id) {
-    prop <- sum_prop(counts_nm, unlist(GO[go_id])) 
-    return(prop)
-  }, simplify = FALSE)
-  go_prop <- do.call(cbind, go_prop)
-  go_names <- Term(unlist(GO_terms))
-  go_names <- sapply(go_names, simple_cap)
-  colnames(go_prop) <- go_names 
-  
-  #CYTOPLASM AND MEMBRANE PRESENT IN GO TERMS
-  m_i <- which(GO_terms[,1]  == "GO:0016020")
-  c_i <- which(GO_terms[,1]  ==  "GO:0005737")
-  
-  volume_surface_ratio <- matrix(0, ncol(counts_nm))
-  if (length(m_i) > 0 && length(c_i) > 0 && sum(go_prop[, c_i]) > 0) {
-    volume_surface_ratio <- go_prop[, m_i]/go_prop[, c_i]
-  }
-  
-  #PROPORTION OF MAPPED READS MAPPED TO SPECIFIC GENES
-  extra_genes_prop <- sapply(extra_genes, function(extra_g) {
-    prop <- sum_prop(counts_nm, extra_g) 
-    return(prop)
-  }, simplify = FALSE)
-  extra_genes_prop <- do.call(cbind, extra_genes_prop)
-  colnames(extra_genes_prop) <- unlist(names(extra_genes))
-  
-  biological_features <- cbind(go_prop, extra_genes_prop)
-  colnames(biological_features) <- paste0(colnames(biological_features), " %")
-  
-  features <- data.frame(techincal_features, biological_features, volume_surface_ratio)
-  colnames(features) <- c(colnames(techincal_features), 
-                          colnames(biological_features), "Volume-surface ratio")
-  rownames(features) <- colnames(counts_nm)
-  return(features)
+    mean_ex <- apply(counts_nm, 1, mean)
+    i <- order(mean_ex, decreasing = TRUE)
+    mean_ex <- mean_ex[i]
+    lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
+    
+    #ONLY LOWLY EXPRESSED
+    l_i <- which(rownames(counts_nm) %in% names(lowl_expr))
+    cell_to_mean_corr_spearman_low_ex = matrix(0, ncol(counts_nm))
+    if (length(l_i) > 100) {
+        cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
+                                                 method = "spearman")
+    }
+    techincal_features <- cbind(number_mapped_reads_prop,
+                                read_metrics[, 5:10], detected_genes, cell_to_mean_corr_spearman, cell_to_mean_corr_spearman_low_ex,
+                                transcriptome_variance,
+                                num_of_high_var_exp_genes_interval, 
+                                number_of_highly_expressed_variable_genes)
+    tech_names <- c("Mapped %", "Multi-mapped %", "Intergenic %", "Intragenic %", "Exonic %", "Intronic %", "Ambigious %", 
+                    "#Detected genes",  "Cell-to-mean", "Cell-to-mean lowE", "Transcriptome variance", 
+                    paste0("High expr.var genes intv.", 1:ncol(num_of_high_var_exp_genes_interval)),  "#High exp + var genes")
+    
+    colnames(techincal_features) <- tech_names
+    
+    ########################################
+    ####BIOLOGICAL FEATURES##################
+    ########################################
+    
+    
+    #ASSUME IT IS MOUSE
+    GO_BP <- topGO::annFUN.org("BP", mapping = organism, ID = "ensembl")
+    GO_CC <- topGO::annFUN.org("CC", mapping = organism, ID = "ensembl")
+    
+    
+    GO <- c(GO_BP, GO_CC)
+    
+    #PROPORTION OF MAPPED READS MAPPED TO THE GO TERM
+    go_prop <- sapply(unlist(GO_terms), function(go_id) {
+        prop <- sum_prop(counts_nm, unlist(GO[go_id])) 
+        return(prop)
+    }, simplify = FALSE)
+    go_prop <- do.call(cbind, go_prop)
+    go_names <- Term(unlist(GO_terms))
+    go_names <- sapply(go_names, simple_cap)
+    colnames(go_prop) <- go_names 
+    
+    #CYTOPLASM AND MEMBRANE PRESENT IN GO TERMS
+    m_i <- which(GO_terms[,1]  == "GO:0016020")
+    c_i <- which(GO_terms[,1]  ==  "GO:0005737")
+    
+    volume_surface_ratio <- matrix(0, ncol(counts_nm))
+    if (length(m_i) > 0 && length(c_i) > 0 && sum(go_prop[, c_i]) > 0) {
+        volume_surface_ratio <- go_prop[, m_i]/go_prop[, c_i]
+    }
+    
+    #PROPORTION OF MAPPED READS MAPPED TO SPECIFIC GENES
+    extra_genes_prop <- sapply(extra_genes, function(extra_g) {
+        prop <- sum_prop(counts_nm, extra_g) 
+        return(prop)
+    }, simplify = FALSE)
+    extra_genes_prop <- do.call(cbind, extra_genes_prop)
+    colnames(extra_genes_prop) <- unlist(names(extra_genes))
+    
+    biological_features <- cbind(go_prop, extra_genes_prop)
+    colnames(biological_features) <- paste0(colnames(biological_features), " %")
+    
+    features <- data.frame(techincal_features, biological_features, volume_surface_ratio)
+    colnames(features) <- c(colnames(techincal_features), 
+                            colnames(biological_features), "Volume-surface ratio")
+    rownames(features) <- colnames(counts_nm)
+    return(features)
 }
+
 
 ################################################################################
 ## sum_prop
@@ -419,25 +418,29 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
 #' 
 #' @param counts Normalised gene expression count matrix
 #' @param genes_interest dataframe of genes of interest to merge
-#' 
+#' @return a vector of sums per group
 #' 
 sum_prop <- function(counts, genes_interest) {
-  genes_interest_i <- which(rownames(counts) %in% unlist(genes_interest))
-  genes_interest_counts_prop <- colSums(counts[genes_interest_i,])
-  return(genes_interest_counts_prop)
+    genes_interest_i <- which(rownames(counts) %in% unlist(genes_interest))
+    genes_interest_counts_prop <- colSums(counts[genes_interest_i,])
+    return(genes_interest_counts_prop)
 }
+
+
 ################################################################################
 ## simple_cap
 
 #' Converts all first letters to capital letters
 #' 
 #' @param x string
+#' @return a character vector in title case
 #' 
 simple_cap <- function(x) {
-  s <- strsplit(x, " ")[[1]]
-  paste(toupper(substring(s, 1,1)), substring(s, 2),
-        sep = "", collapse = " ")
+    s <- strsplit(x, " ")[[1]]
+    paste(toupper(substring(s, 1,1)), substring(s, 2),
+          sep = "", collapse = " ")
 }
+
 
 ################################################################################
 ## uni.plot
@@ -453,51 +456,53 @@ simple_cap <- function(x) {
 #' @importFrom grDevices dev.off pdf rainbow
 #' @import grid
 #' 
+#' @return a list of outlier indicators
+#' 
 uni.plot <- function(x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
-  if (!is.matrix(x) && !is.data.frame(x)) 
-    stop("x must be matrix or data.frame")
-  if (ncol(x) < 2) 
-    stop("x must be at least two-dimensional")
-  if (ncol(x) > 10) 
-    stop("x should not be more than 10-dimensional")
-  rob <- covMcd(x, alpha = quan)
-  xarw <- mvoutlier::arw(x, rob$center, rob$cov, alpha = alpha)
-  if (xarw$cn != Inf) {
-    alpha <- sqrt(c(xarw$cn, qchisq(c(0.75, 0.5, 0.25), ncol(x))))
-  }
-  else {
-    alpha <- sqrt(qchisq(c(0.975, 0.75, 0.5, 0.25), ncol(x)))
-  }
-  dist <- mahalanobis(x, center = rob$center, cov = rob$cov)
-  sx <- matrix(NA, nrow = nrow(x), ncol = ncol(x))
-  for (i in 1:ncol(x)) sx[, i] <- (x[, i] - xarw$m[i])/sqrt(xarw$c[i, 
-                                                                   i])
-  r <- range(sx)
-  if (symb == FALSE) {
-    for (i in 1:ncol(x)) {
-      
-      o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
-                                                        dim(x)[2]))))
-      l <- list(outliers = o, md = sqrt(dist))
+    if (!is.matrix(x) && !is.data.frame(x)) 
+        stop("x must be matrix or data.frame")
+    if (ncol(x) < 2) 
+        stop("x must be at least two-dimensional")
+    if (ncol(x) > 10) 
+        stop("x should not be more than 10-dimensional")
+    rob <- covMcd(x, alpha = quan)
+    xarw <- mvoutlier::arw(x, rob$center, rob$cov, alpha = alpha)
+    if (xarw$cn != Inf) {
+        alpha <- sqrt(c(xarw$cn, qchisq(c(0.75, 0.5, 0.25), ncol(x))))
     }
-  }
-  if (symb == TRUE) {
-    rd <- sqrt(dist)
-    lpch <- c(3, 3, 16, 1, 1)
-    lcex <- c(1.5, 1, 0.5, 1, 1.5)
-    lalpha <- length(alpha)
-    xs <- scale(x) - min(scale(x))
-    eucl <- sqrt(apply(xs ^ 2, 1, sum))
-    rbcol <- rev(rainbow(nrow(x), 
-                         start = 0, end = 0.7))[
-                           as.integer(cut(eucl, nrow(x), labels = 1:nrow(x)))]
-    
-    o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
-                                                      dim(x)[2]))))
-    l <- list(outliers = o, md = sqrt(dist), euclidean = eucl)
-  }
-  par(yaxt = "s")
-  l
+    else {
+        alpha <- sqrt(qchisq(c(0.975, 0.75, 0.5, 0.25), ncol(x)))
+    }
+    dist <- mahalanobis(x, center = rob$center, cov = rob$cov)
+    sx <- matrix(NA, nrow = nrow(x), ncol = ncol(x))
+    for (i in 1:ncol(x)) sx[, i] <- (x[, i] - xarw$m[i])/sqrt(xarw$c[i, 
+                                                                     i])
+    r <- range(sx)
+    if (symb == FALSE) {
+        for (i in 1:ncol(x)) {
+            
+            o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
+                                                              dim(x)[2]))))
+            l <- list(outliers = o, md = sqrt(dist))
+        }
+    }
+    if (symb == TRUE) {
+        rd <- sqrt(dist)
+        lpch <- c(3, 3, 16, 1, 1)
+        lcex <- c(1.5, 1, 0.5, 1, 1.5)
+        lalpha <- length(alpha)
+        xs <- scale(x) - min(scale(x))
+        eucl <- sqrt(apply(xs ^ 2, 1, sum))
+        rbcol <- rev(rainbow(nrow(x), 
+                             start = 0, end = 0.7))[
+                                 as.integer(cut(eucl, nrow(x), labels = 1:nrow(x)))]
+        
+        o <- (sqrt(dist) > min(sqrt(xarw$cn), sqrt(qchisq(0.975, 
+                                                          dim(x)[2]))))
+        l <- list(outliers = o, md = sqrt(dist), euclidean = eucl)
+    }
+    par(yaxt = "s")
+    l
 }
 
 
@@ -518,114 +523,114 @@ uni.plot <- function(x, symb = FALSE, quan = 1/2, alpha = 0.025)  {
 #' @import ggplot2 
 #' 
 plot_pca <- function(features, annot, pca, col, output_file){
-  
-  feature_names <- colnames(features)
-  ## define data frame 
-  data_frame <- data.frame(type = as.character(annot), pca$x)  
-  ## plot PC1 vs PC2
-  plot <- ggplot2::ggplot(data_frame, ggplot2::aes_string(x = "PC1", y = "PC2")) + 
-    ggplot2::geom_point(ggplot2::aes_string(colour = "type")) + 
-    ggplot2::scale_colour_manual(values = col) +
-    ggplot2::theme_bw()  + 
-    ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(), 
-                   axis.text.y = ggplot2::element_text(), axis.ticks.length = grid::unit(0, "mm"),
-                   axis.title.x = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank(),
-                   panel.background = ggplot2::element_blank(),
-                   panel.border = ggplot2::element_rect(fill = NA, color = "black", 
-                                                        linetype = "solid"),
-                   panel.grid.major = ggplot2::element_blank(), 
-                   panel.grid.minor = ggplot2::element_blank(),
-                   plot.background = ggplot2::element_blank()) 
-  
-  
-  #Plot top 3 features for PC1
-  top_PC1_i <- order(abs(pca$rotation[,1]), decreasing = TRUE)
-  top_f_pc1 <- names(pca$rotation[(top_PC1_i[1:3]), 1])
-  top_features_pc1_i <- which(feature_names %in% top_f_pc1)
-  
-  size <- 0.5
-  text_size <- 12
-  border_size <- 1
-  
-  plotsPC1 <- sapply(top_features_pc1_i, function(f) {
-    feature <- features[,f]
-    df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
-      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
-                                                y = "counts"),
-                            alpha = 0.3, size = size, 
-                            outlier.size = 0) +
-      ggplot2::ggtitle(feature_names[f]) + 
-      ggplot2::theme_bw() + 
-      ggplot2::theme(axis.line = ggplot2::element_blank(), 
-                     axis.text.x = ggplot2::element_blank(), 
-                     axis.text.y = ggplot2::element_text(size = text_size),
-                     axis.ticks.length = grid::unit(0, "mm"), 
-                     axis.title.x = ggplot2::element_blank(), 
-                     axis.title.y = ggplot2::element_blank(),
-                     legend.position = "none",
-                     plot.title = ggplot2::element_text(size = text_size),
-                     panel.background = ggplot2::element_blank(),
-                     panel.border = ggplot2::element_rect(
-                       fill = NA, color = "black", size = border_size, 
-                       linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
-                     panel.grid.minor = ggplot2::element_blank(),
-                     plot.background = ggplot2::element_blank()) + 
-      ggplot2::scale_color_manual(values = col)
-    return(plot)
-  }, simplify = FALSE)
-  
-  #Plot top 3 features for PC2
-  top_PC2_i <- order(abs(pca$rotation[,2]), decreasing = TRUE)
-  top_f_pc2 <- names(pca$rotation[(top_PC2_i[1:3]),2])
-  top_features_pc2_i <- which(feature_names %in% top_f_pc2)
-  
-  plotPC2 <- sapply(top_features_pc2_i, function(f) {
-    feature <- features[,f]
-    df <- data.frame(counts = log(feature + 0.0001), type = annot)
-    plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
-      ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
-                                                y = "counts"), 
-                            alpha = 0.3,  size = size, 
-                            outlier.size = 0) +
-      ggplot2::ggtitle(feature_names[f]) + 
-      ggplot2::theme_bw() + 
-      ggplot2::theme(axis.line = ggplot2::element_blank(), 
-                     axis.text.x = ggplot2::element_blank(),
-                     axis.text.y = ggplot2::element_text(size = text_size),
-                     axis.ticks.length = grid::unit(0, "mm"),
-                     axis.title.x = ggplot2::element_blank(),
-                     axis.title.y = ggplot2::element_blank(),
-                     legend.position = "none",
-                     panel.background = ggplot2::element_blank(),
-                     plot.title = ggplot2::element_text(size = text_size),
-                     panel.border = ggplot2::element_rect(fill = NA, 
-                                                          color = "black", 
-                                                          size = border_size, 
-                                                          linetype = "solid"),
-                     panel.grid.major = ggplot2::element_blank(),
-                     panel.grid.minor = ggplot2::element_blank(),
-                     plot.background = ggplot2::element_blank()) + 
-      ggplot2::scale_color_manual(values = col)
-    return(plot)
-  }, simplify = FALSE)
-  
-  #ARRANGE TOP FEATURES ONTO A GRID
-  #PLOT PCA IN THE MIDDLE AND FEATURES LEFT AND BOTTOM
-  l <- matrix(c(2, 2, 3, 3, 4, 4, rep(1,5), 5, rep(1,5), 5, rep(1,5), 6, 
-                rep(1,5), 6,rep(1,5), 7), nrow = 6)
-  l <- cbind(l, c(rep(1, 5), 7))
-  
-  tp <- matrix(c(2, 2, 3, 3, 4, 4, 10, rep(1, 5), 5, 5, rep(1, 5), 5, 5,
-                 rep(1, 5), 6, 6, rep(1, 5), 6, 6, rep(1, 5), 7, 7), nrow = 7)
-  tp <- cbind(tp, c(rep(1, 5), 7, 7))
-  
-  pdf(output_file, width = 10, height = 7)
-  multiplot(plot,  plotlist = c(plotsPC1, plotPC2), layout = l)
-  dev.off()
-  
-  multiplot(plot,  plotlist = c(plotsPC1, plotPC2), layout = l)
-  
+    
+    feature_names <- colnames(features)
+    ## define data frame 
+    data_frame <- data.frame(type = as.character(annot), pca$x)  
+    ## plot PC1 vs PC2
+    plot <- ggplot2::ggplot(data_frame, ggplot2::aes_string(x = "PC1", y = "PC2")) + 
+        ggplot2::geom_point(ggplot2::aes_string(colour = "type")) + 
+        ggplot2::scale_colour_manual(values = col) +
+        ggplot2::theme_bw()  + 
+        ggplot2::theme(axis.line = ggplot2::element_blank(), axis.text.x = ggplot2::element_text(), 
+                       axis.text.y = ggplot2::element_text(), axis.ticks.length = grid::unit(0, "mm"),
+                       axis.title.x = ggplot2::element_blank(), axis.title.y = ggplot2::element_blank(),
+                       panel.background = ggplot2::element_blank(),
+                       panel.border = ggplot2::element_rect(fill = NA, color = "black", 
+                                                            linetype = "solid"),
+                       panel.grid.major = ggplot2::element_blank(), 
+                       panel.grid.minor = ggplot2::element_blank(),
+                       plot.background = ggplot2::element_blank()) 
+    
+    
+    #Plot top 3 features for PC1
+    top_PC1_i <- order(abs(pca$rotation[,1]), decreasing = TRUE)
+    top_f_pc1 <- names(pca$rotation[(top_PC1_i[1:3]), 1])
+    top_features_pc1_i <- which(feature_names %in% top_f_pc1)
+    
+    size <- 0.5
+    text_size <- 12
+    border_size <- 1
+    
+    plotsPC1 <- sapply(top_features_pc1_i, function(f) {
+        feature <- features[,f]
+        df <- data.frame(counts = log(feature + 0.0001), type = annot)
+        plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+            ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                      y = "counts"),
+                                  alpha = 0.3, size = size, 
+                                  outlier.size = 0) +
+            ggplot2::ggtitle(feature_names[f]) + 
+            ggplot2::theme_bw() + 
+            ggplot2::theme(axis.line = ggplot2::element_blank(), 
+                           axis.text.x = ggplot2::element_blank(), 
+                           axis.text.y = ggplot2::element_text(size = text_size),
+                           axis.ticks.length = grid::unit(0, "mm"), 
+                           axis.title.x = ggplot2::element_blank(), 
+                           axis.title.y = ggplot2::element_blank(),
+                           legend.position = "none",
+                           plot.title = ggplot2::element_text(size = text_size),
+                           panel.background = ggplot2::element_blank(),
+                           panel.border = ggplot2::element_rect(
+                               fill = NA, color = "black", size = border_size, 
+                               linetype = "solid"), panel.grid.major = ggplot2::element_blank(),
+                           panel.grid.minor = ggplot2::element_blank(),
+                           plot.background = ggplot2::element_blank()) + 
+            ggplot2::scale_color_manual(values = col)
+        return(plot)
+    }, simplify = FALSE)
+    
+    #Plot top 3 features for PC2
+    top_PC2_i <- order(abs(pca$rotation[,2]), decreasing = TRUE)
+    top_f_pc2 <- names(pca$rotation[(top_PC2_i[1:3]),2])
+    top_features_pc2_i <- which(feature_names %in% top_f_pc2)
+    
+    plotPC2 <- sapply(top_features_pc2_i, function(f) {
+        feature <- features[,f]
+        df <- data.frame(counts = log(feature + 0.0001), type = annot)
+        plot <- ggplot2::ggplot(df, ggplot2::aes_string(x = "type")) + 
+            ggplot2::geom_boxplot(ggplot2::aes_string(colour = "factor(type)", 
+                                                      y = "counts"), 
+                                  alpha = 0.3,  size = size, 
+                                  outlier.size = 0) +
+            ggplot2::ggtitle(feature_names[f]) + 
+            ggplot2::theme_bw() + 
+            ggplot2::theme(axis.line = ggplot2::element_blank(), 
+                           axis.text.x = ggplot2::element_blank(),
+                           axis.text.y = ggplot2::element_text(size = text_size),
+                           axis.ticks.length = grid::unit(0, "mm"),
+                           axis.title.x = ggplot2::element_blank(),
+                           axis.title.y = ggplot2::element_blank(),
+                           legend.position = "none",
+                           panel.background = ggplot2::element_blank(),
+                           plot.title = ggplot2::element_text(size = text_size),
+                           panel.border = ggplot2::element_rect(fill = NA, 
+                                                                color = "black", 
+                                                                size = border_size, 
+                                                                linetype = "solid"),
+                           panel.grid.major = ggplot2::element_blank(),
+                           panel.grid.minor = ggplot2::element_blank(),
+                           plot.background = ggplot2::element_blank()) + 
+            ggplot2::scale_color_manual(values = col)
+        return(plot)
+    }, simplify = FALSE)
+    
+    #ARRANGE TOP FEATURES ONTO A GRID
+    #PLOT PCA IN THE MIDDLE AND FEATURES LEFT AND BOTTOM
+    l <- matrix(c(2, 2, 3, 3, 4, 4, rep(1,5), 5, rep(1,5), 5, rep(1,5), 6, 
+                  rep(1,5), 6,rep(1,5), 7), nrow = 6)
+    l <- cbind(l, c(rep(1, 5), 7))
+    
+    tp <- matrix(c(2, 2, 3, 3, 4, 4, 10, rep(1, 5), 5, 5, rep(1, 5), 5, 5,
+                   rep(1, 5), 6, 6, rep(1, 5), 6, 6, rep(1, 5), 7, 7), nrow = 7)
+    tp <- cbind(tp, c(rep(1, 5), 7, 7))
+    
+    pdf(output_file, width = 10, height = 7)
+    multiplot(plot,  plotlist = c(plotsPC1, plotPC2), layout = l)
+    dev.off()
+    
+    multiplot(plot,  plotlist = c(plotsPC1, plotPC2), layout = l)
+    
 }
 
 ################################################################################
@@ -642,54 +647,55 @@ plot_pca <- function(features, annot, pca, col, output_file){
 #' @return a plot object
 #' 
 multiplot <- function(..., plotlist = NULL, file, cols = 6, layout = NULL) {
-  
-  # Make a list from the ... arguments and plotlist
-  plots <- c(list(...), plotlist)
-  
-  numPlots <- length(plots)
-  
-  # If layout is NULL, then use 'cols' to determine layout
-  if (is.null(layout)) {
-    # Make the panel
-    # ncol: Number of columns of plots
-    # nrow: Number of rows needed, calculated from # of cols
-    layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
-                     ncol = cols, nrow = ceiling(numPlots/cols))
-  }
-  
-  if (numPlots == 1) {
-    print(plots[[1]])
     
-  } else {
-    # Set up the page
-    grid::grid.newpage()
-    grid::pushViewport(grid::viewport(
-      layout = grid::grid.layout(nrow(layout), ncol(layout))))
+    # Make a list from the ... arguments and plotlist
+    plots <- c(list(...), plotlist)
     
-    # Make each plot, in the correct location
-    for (i in 1:numPlots) {
-      # Get the i,j matrix positions of the regions that contain this subplot
-      matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
-      
-      print(plots[[i]], 
-            vp = grid::viewport(layout.pos.row = matchidx$row,
-                                layout.pos.col = matchidx$col))
+    numPlots <- length(plots)
+    
+    # If layout is NULL, then use 'cols' to determine layout
+    if (is.null(layout)) {
+        # Make the panel
+        # ncol: Number of columns of plots
+        # nrow: Number of rows needed, calculated from # of cols
+        layout <- matrix(seq(1, cols * ceiling(numPlots/cols)),
+                         ncol = cols, nrow = ceiling(numPlots/cols))
     }
-  }
+    
+    if (numPlots == 1) {
+        print(plots[[1]])
+        
+    } else {
+        # Set up the page
+        grid::grid.newpage()
+        grid::pushViewport(grid::viewport(
+            layout = grid::grid.layout(nrow(layout), ncol(layout))))
+        
+        # Make each plot, in the correct location
+        for (i in 1:numPlots) {
+            # Get the i,j matrix positions of the regions that contain this subplot
+            matchidx <- as.data.frame(which(layout == i, arr.ind = TRUE))
+            
+            print(plots[[i]], 
+                  vp = grid::viewport(layout.pos.row = matchidx$row,
+                                      layout.pos.col = matchidx$col))
+        }
+    }
 }
 
 #' Internal voting function to get final labels
 #' 
 #' @param predictions Predicted labels
+#' @return numeric vector
 #' 
-vote <- function(predictions) {
-  freq <- apply(predictions, 1, function(x) {
-    f <- table(x)
-    return(names(f)[which.max(f)])
-  })
-  
-  freq <- as.numeric(freq)
-  return(freq)
+.vote <- function(predictions) {
+    freq <- apply(predictions, 1, function(x) {
+        f <- table(x)
+        return(names(f)[which.max(f)])
+    })
+    
+    freq <- as.numeric(freq)
+    return(freq)
 }
 
 ################################################################################
@@ -698,7 +704,8 @@ vote <- function(predictions) {
 #' Internal function to print info string
 #' 
 #' @param string a string to print as an info message
+#' @return a string object of information (invisible)
 #' 
-info <- function(string) { 
-  print(paste0("[INFO]:", string))
+.info <- function(string) { 
+    print(paste0("[INFO]:", string))
 }

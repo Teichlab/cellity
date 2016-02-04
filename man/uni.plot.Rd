@@ -16,6 +16,9 @@ uni.plot(x, symb = FALSE, quan = 1/2, alpha = 0.025)
 
 \item{alpha}{alpha}
 }
+\value{
+a list of outlier indicators
+}
 \description{
 Internal function to detect outliers from the mvoultier pacakge
 Modified slightly so that plots are not printed

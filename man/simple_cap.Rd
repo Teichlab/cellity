@@ -9,6 +9,9 @@ simple_cap(x)
 \arguments{
 \item{x}{string}
 }
+\value{
+a character vector in title case
+}
 \description{
 Converts all first letters to capital letters
 }

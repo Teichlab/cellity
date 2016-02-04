@@ -11,6 +11,9 @@ sum_prop(counts, genes_interest)
 
 \item{genes_interest}{dataframe of genes of interest to merge}
 }
+\value{
+a vector of sums per group
+}
 \description{
 Supports TPM and proportion of mapped reads.
 }

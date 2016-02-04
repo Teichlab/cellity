@@ -4,7 +4,7 @@
 \name{feature_info}
 \alias{feature_info}
 \title{Information which genes and GO categories should be included as features. Also defines which features are cell-type independent (common features)}
-\format{a list with 3 elements (GO_terms,extra_genes,common_features).}
+\format{a list with 2 elements (GO_terms,common_features).}
 \source{
 Wellcome Trust Sanger Institute
 }
