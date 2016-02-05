@@ -29,7 +29,8 @@ Suggests:
     BiocStyle,
     caret,
     knitr,
-    testthat
+    testthat,
+    rmarkdown
 VignetteBuilder: knitr
 LazyData: true
 biocViews: RNASeq, QualityControl, Preprocessing, Normalization, Visualization,
