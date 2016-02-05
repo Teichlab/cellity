@@ -31,4 +31,15 @@ Assess quality of a cell - SVM version
 This function takes a traning set + annotation to predict a test 
 set. It requires that hyper-parameters have been optimised.
 }
+\examples{
+data(param_mES_all)
+data(training_mES_features)
+data(training_mES_labels)
+data(mES1_features)
+data(mES1_labels)
+mES1_features_all <- mES1_features[[1]]
+training_mES_features_all <- training_mES_features[[1]]
+mES1_quality_SVM <- assess_cell_quality_SVM( training_mES_features_all, 
+training_mES_labels[,2], param_mES_all, mES1_features_all)
+}
 

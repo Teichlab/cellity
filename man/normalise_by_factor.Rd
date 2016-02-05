@@ -17,4 +17,9 @@ a matrix with normalized gene counts
 \description{
 Internal function to normalize by library size
 }
+\examples{
+data(sample_counts)
+data(sample_stats)
+sample_counts_nm <- normalise_by_factor(sample_counts, colSums(sample_counts))
+}
 

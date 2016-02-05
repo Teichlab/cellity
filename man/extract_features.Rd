@@ -41,4 +41,10 @@ This function takes a combination of gene counts and mapping
 statistics to extract biological and technical features, which than can be 
 used for quality data analysis
 }
+\examples{
+data(sample_counts)
+data(sample_stats)
+sample_counts_nm <- normalise_by_factor(sample_counts, colSums(sample_counts))
+sample_features <- extract_features(sample_counts_nm, sample_stats)
+}
 

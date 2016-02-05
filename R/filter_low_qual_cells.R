@@ -25,7 +25,11 @@
 #' @importFrom utils data write.table
 #' 
 #' @export
-#' 
+#' @examples 
+#' data(sample_counts)
+#' data(sample_stats)
+#' sample_counts_nm <- normalise_by_factor(sample_counts, colSums(sample_counts))
+#' sample_features <- extract_features(sample_counts_nm, sample_stats)
 extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="", 
                              common_features=NULL, GO_terms=NULL, extra_genes=NULL, organism="mouse") {
     
@@ -116,7 +120,16 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 #' 
 #' @importFrom e1071 svm
 #' @export
-#' 
+#' @examples 
+#' data(param_mES_all)
+#' data(training_mES_features)
+#' data(training_mES_labels)
+#' data(mES1_features)
+#' data(mES1_labels)
+#' mES1_features_all <- mES1_features[[1]]
+#' training_mES_features_all <- training_mES_features[[1]]
+#' mES1_quality_SVM <- assess_cell_quality_SVM( training_mES_features_all, 
+#' training_mES_labels[,2], param_mES_all, mES1_features_all)
 assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
                                     ensemble_param, test_set_features) {
     
@@ -165,7 +178,10 @@ assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
 #' 
 #' @importFrom mvoutlier pcout
 #' @export
-#' 
+#' @examples 
+#' data(training_mES_features)
+#' training_mES_features_all <- training_mES_features[[1]]
+#' training_quality_PCA_allF <- assess_cell_quality_PCA(training_mES_features_all)
 assess_cell_quality_PCA <- function(features, file="") {
     
     ## perform PCA
@@ -237,7 +253,10 @@ assess_cell_quality_PCA <- function(features, file="") {
 #' @return a matrix with normalized gene counts
 #' 
 #' @export
-#' 
+#' @examples 
+#' data(sample_counts)
+#' data(sample_stats)
+#' sample_counts_nm <- normalise_by_factor(sample_counts, colSums(sample_counts))
 normalise_by_factor <- function(counts, norm_factor) { 
     return(t(t(counts) / norm_factor))
 }

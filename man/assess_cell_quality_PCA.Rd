@@ -22,4 +22,9 @@ ASSESS CELL QUALITY USING PCA AND OUTLIER DETECTION
 This function applies PCA on features and uses outlier detection to
  determine which cells are low and which are high quality
 }
+\examples{
+data(training_mES_features)
+training_mES_features_all <- training_mES_features[[1]]
+training_quality_PCA_allF <- assess_cell_quality_PCA(training_mES_features_all)
+}
 
