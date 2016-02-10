@@ -2,11 +2,12 @@
 title: "Introduction to `cellity`: Classification of low quality cells in scRNA-seq data using R"
 author: "Tomislav Ilicic & Davis McCarthy"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: 
+  BiocStyle::html_document
 vignette: >
   %\VignetteIndexEntry{An introduction to the cellity package}
   %\VignetteEngine{knitr::rmarkdown}
-  \usepackage[utf8]{inputenc}
+  %\VignetteEncoding{UTF-8}
 ---
 
 ```{r knitr-options, echo=FALSE, warning=FALSE}

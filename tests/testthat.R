@@ -1,3 +1,4 @@
 library(testthat)
 library(cellity)
-test_package("cellity")
+
+test_check("cellity")
