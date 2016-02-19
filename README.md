@@ -32,19 +32,17 @@ install.packages("devtools")
 devtools::install_github("ti243/cellity", build_vignettes = TRUE)
 ```
 
-**If you are using the current release version of R, 3.2.3:**
-```{r}
-devtools::install_github("ti243/cellity", ref = "release-R-3.2", build_vignettes = TRUE)
-```
-
-I have recently submitted `cellity` to Bioconductor, so development of the 
+The `cellity` package has  recently been submitted to Bioconductor, so development of the 
 package is proceeding with the development version of R (version 3.3). As such, 
-the master branch of this repository requires R >= 3.3. If you are using the
-release version of R, then please install using the adjusted command above.
+using `cellity` with the current release version of R is not supported. Assuming 
+eventual acceptance at Bioconductor, `cellity` will be made available through 
+Bioconductor in the next release in April, at which point both a "release" version
+(that will operate with the release version of R) and a "devel" version (which will
+depend on the appropriate development version of R) will be available and supported.
 
-Using the most recent version of R is strongly recommended (R 3.2.3 at the time
-of writing). Effort has been made to ensure the package works with R >3.0, but
-the package has not been tested with R <3.1.1.
+If you would like to use `cellity` with the current version of R (3.2.3 at the time of 
+writing), please leave a note in the Issues section of this repository and the authors
+will consider making this possible.
 
 There are several other packages from CRAN and Bioconductor that `cellity` uses,
 so you will need to have these packages installed as well. The CRAN packages
