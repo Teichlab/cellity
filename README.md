@@ -21,10 +21,23 @@ Future versions of `cellity` may also incorporate:
 See below for information about installation, getting started and highlights of the package.
 
 ## Installation
-This package currently lives on GitHub, so I recommend using Hadley Wickham's
-`devtools` package to install `cellity` directly from GitHub. If you don't have
-`devtools` installed, then install that from CRAN (as shown below) and then run
-the call to install `cellity`:
+The `cellity` package has  recently been submitted to
+[Bioconductor](http://bioconductor.org/) and is currently under review. Once the 
+package is accepted into Bioconductor, the most reliable way to install the 
+package will be to use the usual Bioconductor method:
+
+```
+## try http:// if https:// URLs are not supported
+source("https://bioconductor.org/biocLite.R")
+biocLite("scater")
+```
+
+The `cellity` package should become available in the next Bioconductor release in
+April 2016. In the meantime, `cellity` can be installed directly from GitHub as
+described below. We recommend using Hadley Wickham's `devtools` package to 
+install `cellity` directly from GitHub. If you don't have `devtools` installed, 
+then install that from CRAN (as shown below) and then run the call below to 
+install `cellity`:
 
 **If you are using the development version of R, 3.3:**
 ```{r}
@@ -32,17 +45,18 @@ install.packages("devtools")
 devtools::install_github("ti243/cellity", build_vignettes = TRUE)
 ```
 
-The `cellity` package has  recently been submitted to Bioconductor, so development of the 
-package is proceeding with the development version of R (version 3.3). As such, 
-using `cellity` with the current release version of R is not supported. Assuming 
-eventual acceptance at Bioconductor, `cellity` will be made available through 
-Bioconductor in the next release in April, at which point both a "release" version
-(that will operate with the release version of R) and a "devel" version (which will
-depend on the appropriate development version of R) will be available and supported.
+As the `cellity` package has recently been submitted to Bioconductor, 
+development of the package is proceeding with the development version of R 
+(version 3.3). As such, using `cellity` with the current release version of R is
+not supported. Assuming eventual acceptance at Bioconductor, `cellity` will be 
+made available through Bioconductor in the next release in April, at which point
+both a "release" version (that will operate with the release version of R) and a
+"devel" version (which will depend on the appropriate development version of R) 
+will be available and supported.
 
-If you would like to use `cellity` with the current version of R (3.2.3 at the time of 
-writing), please leave a note in the Issues section of this repository and the authors
-will consider making this possible.
+If you would like to use `cellity` with the current version of R (3.2.3 at the 
+time of writing), please leave a note in the Issues section of this repository 
+and the authors will consider making this possible.
 
 There are several other packages from CRAN and Bioconductor that `cellity` uses,
 so you will need to have these packages installed as well. The CRAN packages
@@ -64,9 +78,6 @@ You might also like to install `dplyr` for convenient data manipulation:
 ```{r}
 install.packages("dplyr")
 ```
-
-The `cellity` package has been submitted to 
-[Bioconductor](http://bioconductor.org/) and is currently under review.
 
 
 ## Getting started
