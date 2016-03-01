@@ -133,6 +133,30 @@ extract_features <- function(counts_nm, read_metrics, prefix="", output_dir="",
 assess_cell_quality_SVM <- function(training_set_features, training_set_labels,
                                     ensemble_param, test_set_features) {
     
+    train_f <- as.character(colnames(training_set_features))
+    test_f <- as.character(colnames(test_set_features))
+    
+    feature_inter <- intersect(train_f, test_f)
+    train_f_not_in <- which((train_f %in% feature_inter)  == TRUE)
+    test_f_not_in <- which((test_f %in% feature_inter)  == FALSE)
+    
+    #Remove features that are not the same
+    if (length(feature_inter) != length(train_f)) {
+        print("Following features are not compatible and will be removed:")
+      if (length(train_f_not_in) > 0) {
+        print(train_f[train_f_not_in])
+        training_set_features = training_set_features[-train_f_not_in]
+      }
+      
+      if (length(test_f_not_in) > 0) {
+        print(test_f[test_f_not_in])
+        test_set_features = test_set_features[-test_f_not_in]
+      }
+    }
+    
+    training_set_features<-training_set_features[,order(colnames(training_set_features))]
+    test_set_features<-test_set_features[,order(colnames(test_set_features))]
+    
     data_set <- data.frame(l = training_set_labels, 
                            unlist(as.matrix(training_set_features)))
     data_set$l <- as.factor(data_set$l)

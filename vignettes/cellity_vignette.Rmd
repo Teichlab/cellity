@@ -252,12 +252,30 @@ Let us compare the accuracy between the PCA-feature based and SVM version using 
 ```{r, eval=TRUE}
 #PCA QUALITY
 mES1_quality_PCA<-assess_cell_quality_PCA(mES1_features_all)
+mES1_quality_SVM <- assess_cell_quality_SVM(
+  training_mES_features_all, training_mES_labels[,2], param_mES_all, 
+  mES1_features_all)
 
 if (requireNamespace("caret", quietly = TRUE)) {
   truth <- factor(mES1_labels[,2],levels = rev(lvs))
-  pred <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
-  confusionMatrix(pred, truth)
+  pred_PCA <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
+  pred_SVM <- factor(mES1_quality_SVM[,2], levels = rev(lvs))
+
+  c_PCA<-confusionMatrix(pred_PCA, truth)
+  print("PCA accuracy")
+  print(c_PCA$byClass[1:2])
+  
+  c_SVM<-confusionMatrix(pred_SVM, truth)
+  print("SVM accuracy")
+  print(c_SVM$byClass[1:2])
 }
 ```
-We can see that now the PCA-feature based version performs not as good as the SVM version using all features, so we would choose the SVM version. 
-Of course we won't have this information always, but usually both versions should be in good agreement with each other. If the data you predict is the same cell type as the training data (in this case mES) you can probably rely more on the SVM version more and do PCA as a control to see if overall it makes sense. 
+We can see that now the PCA-feature based version performs not as good as the SVM version using all features on detecting low quality cells (specificity), but preserves more high quality cells (sensitivity). Depending on the experimental setting and the question what is more importat: keeping more high or removing more low quality cells, we would choose one of the two methods. 
+
+Usually both versions should be in good agreement with each other. If the data you predict is the same cell type as the training data (in this case mES) you can probably rely more on the SVM version more and do PCA as a control to see if overall it makes sense. 
+
+In this case, the agreemeent between the two methods is ~86%. 
+
+```{r, eval=TRUE}
+print(length(which((mES1_quality_PCA[,2]==mES1_quality_SVM[,2])==TRUE))/nrow(mES1_labels))
+```

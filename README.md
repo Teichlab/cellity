@@ -20,64 +20,49 @@ Future versions of `cellity` may also incorporate:
 
 See below for information about installation, getting started and highlights of the package.
 
-## Installation
-The `cellity` package has  recently been accepted by
-[Bioconductor](http://bioconductor.org/) and will be available on April 15th.
-When the package will be available, use the usual Bioconductor method:
+## Installation over Bioconductor
+The `cellity` package has been accepted by
+[Bioconductor](http://bioconductor.org/). If you have bionconductor installed ('https://www.bioconductor.org/install/'), use the following command below. That will install the appropriate `cellity` version on your installed R version. 
 
 ```
 ## try http:// if https:// URLs are not supported
 source("https://bioconductor.org/biocLite.R")
 biocLite("cellity")
 ```
+Please bear in mind, that there is no release version of `cellity` yet and you will therefore need to use the R development verison 3.3 ('http://r.research.att.com/mavericks/R-devel/R-devel-mavericks-signed.pkg').  
 
-The `cellity` package should become available in the next Bioconductor release in
-April 2016. In the meantime, `cellity` can be installed directly from GitHub as
-described below. We recommend using Hadley Wickham's `devtools` package to 
-install `cellity` directly from GitHub. If you don't have `devtools` installed, 
-then install that from CRAN (as shown below) and then run the call below to 
-install `cellity`:
-
-**If you are using the development version of R, 3.3:**
-```{r}
-install.packages("devtools")
-devtools::install_github("ti243/cellity", build_vignettes = TRUE)
-```
-
+From the 16th of April `cellity` will be available for both the release and development versions of R. 
 As the `cellity` package has recently been submitted to Bioconductor, 
 development of the package is proceeding with the development version of R 
 (version 3.3). As such, using `cellity` with the current release version of R is
-not supported. `cellity` will be 
-made available through Bioconductor in the next release in April, at which point
-both a "release" version (that will operate with the release version of R) and a
-"devel" version (which will depend on the appropriate development version of R) 
-will be available and supported.
+not supported. 
 
-If you would like to use `cellity` with the current version of R (3.2.3 at the 
-time of writing), please leave a note in the Issues section of this repository 
-and the authors will consider making this possible.
+## Installation over Github
+**If you are using the development version of R, 3.3:**
+Installation is possible directly from Github, but it requires manual installation of all dependepent pacakges.
+Similarily, to the bioconductor installation, you need to have the R 3.3 development version installed. 
 
-There are several other packages from CRAN and Bioconductor that `cellity` uses,
-so you will need to have these packages installed as well. The CRAN packages
-should install automatically when `cellity` is installed.
-
-Not all of the following are strictly necessary, but they enhance the
-functionality of `cellity` and are good packages in their own right. The commands
-below should help with package installations.
+Once you have installed the R development version, copy and paste following commands to install all required pacakges:
 
 CRAN packages:
-
 ```{r}
-install.packages(c("ggplot2", "knitr","testthat", "mvoutlier"))
+install.packages(c("devtools", ggplot2", "knitr","testthat","e1071", "graphics", "grDevices", "grid", "mvoutlier", "robustbase", "stats", "utils", "caret", "rmarkdown"))
 ```
 
-
-You might also like to install `dplyr` for convenient data manipulation:
-
+Bioconductor packages:
 ```{r}
-install.packages("dplyr")
+source("https://bioconductor.org/biocLite.R")
+biocLite(c("AnnotationDbi", "org.Hs.eg.db", "org.Mm.eg.db", "topGO", "BiocStyle"))
 ```
 
+Some packages might need other dependencies to be intalled in addition. If this is the case (displayed by an error message within R) use the same command to install the dependent packages.
+After successful installation of the packages listed above, we recommend using Hadley Wickham's 
+`devtools` package to 
+install `cellity` directly from GitHub by executing following command:
+
+```{r}
+devtools::install_github("ti243/cellity", build_vignettes = TRUE)
+```
 
 ## Getting started
 
