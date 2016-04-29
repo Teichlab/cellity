@@ -313,13 +313,18 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
     features <- list()
     
     read_metrics <- data.frame(read_metrics)
+    
     #REMOVE ALL 0 GENES
     counts_nm <- data.frame(counts_nm)
     genes_mean <- rowMeans(counts_nm)
     genes_zero <- which(genes_mean == 0)
-    genes_mean <- genes_mean[-genes_zero]
-    counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
     
+    if(length(genes_zero) > 0) {
+      genes_mean <- genes_mean[-genes_zero]
+      counts_nm_mean <- counts_nm[-genes_zero,] / genes_mean
+    } else{
+      counts_nm_mean <- counts_nm / genes_mean
+    }
     ########################################
     ####TECHINCAL FEATURES##################
     ########################################
@@ -361,10 +366,11 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
         
         
         #NUMBER OF HIGHLY EXPRESSED GENES
-        m <- quantile(counts_nm_mean[i,2])[4]
-        number_of_highly_expressed_variable_genes <- 
-            apply(counts_nm_mean[i,], 2, function(x) {return(sum(x > m))})
-        
+        for (j in 1:ncol(counts_nm_mean)) {
+          m <- mean(counts_nm_mean[i,j])
+          number_of_highly_expressed_variable_genes <- 
+              apply(counts_nm_mean[i,], 2, function(x) {return(sum(x > m))})
+        }
         
         #NUMBER OF LOW TO HIGH EXPRESED AND VARIABLE GENES PER INTERVAL
         num_of_high_var_exp_genes_interval <-
@@ -380,7 +386,7 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
     
     
     mean_ex <- apply(counts_nm, 1, mean)
-    i <- order(mean_ex, decreasing = TRUE)
+    i <- order(mean_ex, decreasing = FALSE)
     mean_ex <- mean_ex[i]
     lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
     
@@ -391,8 +397,9 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
         cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
                                                  method = "spearman")
     }
+    
     techincal_features <- cbind(number_mapped_reads_prop,
-                                read_metrics[, 5:10], detected_genes, cell_to_mean_corr_spearman, cell_to_mean_corr_spearman_low_ex,
+                                read_metrics[, 6:11], detected_genes, cell_to_mean_corr_spearman, cell_to_mean_corr_spearman_low_ex,
                                 transcriptome_variance,
                                 num_of_high_var_exp_genes_interval, 
                                 number_of_highly_expressed_variable_genes)
