@@ -101,10 +101,24 @@ if (requireNamespace("caret", quietly = TRUE)) {
 ## ---- eval=TRUE----------------------------------------------------------
 #PCA QUALITY
 mES1_quality_PCA<-assess_cell_quality_PCA(mES1_features_all)
+mES1_quality_SVM <- assess_cell_quality_SVM(
+  training_mES_features_all, training_mES_labels[,2], param_mES_all, 
+  mES1_features_all)
 
 if (requireNamespace("caret", quietly = TRUE)) {
   truth <- factor(mES1_labels[,2],levels = rev(lvs))
-  pred <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
-  confusionMatrix(pred, truth)
+  pred_PCA <- factor(mES1_quality_PCA[,2], levels = rev(lvs))
+  pred_SVM <- factor(mES1_quality_SVM[,2], levels = rev(lvs))
+
+  c_PCA<-confusionMatrix(pred_PCA, truth)
+  print("PCA accuracy")
+  print(c_PCA$byClass[1:2])
+  
+  c_SVM<-confusionMatrix(pred_SVM, truth)
+  print("SVM accuracy")
+  print(c_SVM$byClass[1:2])
 }
+
+## ---- eval=TRUE----------------------------------------------------------
+print(length(which((mES1_quality_PCA[,2]==mES1_quality_SVM[,2])==TRUE))/nrow(mES1_labels))
 

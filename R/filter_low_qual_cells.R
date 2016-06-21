@@ -399,6 +399,11 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
     if (length(l_i) > 100) {
         cell_to_mean_corr_spearman_low_ex <- cor(counts_nm[l_i,], rowMeans(counts_nm[l_i,]),
                                                  method = "spearman")
+        
+        l=which(is.na(cell_to_mean_corr_spearman_low_ex))
+        if (l > 0) {
+          cell_to_mean_corr_spearman_low_ex = matrix(0, ncol(counts_nm))
+        }
     }
     
     techincal_features <- cbind(number_mapped_reads_prop,
