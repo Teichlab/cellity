@@ -386,6 +386,9 @@ feature_generation <- function(counts_nm, read_metrics, GO_terms, extra_genes,
     
     
     mean_ex <- apply(counts_nm, 1, mean)
+    zeros_i <- which(mean_ex==0)
+    mean_ex <- mean_ex[-zeros_i]
+    
     i <- order(mean_ex, decreasing = FALSE)
     mean_ex <- mean_ex[i]
     lowl_expr <- mean_ex[1:(length(mean_ex)*0.01)]
