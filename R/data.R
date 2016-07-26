@@ -98,7 +98,7 @@ NULL
 #' @name sample_stats
 #' @title Sample read statistics data containing 40 cells 
 #' @description This data frame contains read metrics (columns)
-#' and cells (rows)
+#' and cells (rows). Anything after column 11 will be ignored.
 #' @return NULL, but makes available a dataframe with read statistics
 #' @docType data
 #' @usage sample_stats
